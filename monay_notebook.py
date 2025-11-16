@@ -1,20 +1,22 @@
 import tkinter as tk
 from tkinter import messagebox
-from tkinter import ttk # 用來顯示表格的 Treeview
+from tkinter import ttk # 用來顯示下拉選單和表格
 
 class ExpenseTrackerApp:
     def __init__(self, master):
-        # 設置主視窗
         self.master = master
-        master.title("💰 簡易金錢追蹤器")
-        master.geometry("600x500") # 設定視窗大小
+        master.title("💰 簡易金錢追蹤器 (V2)")
+        master.geometry("650x500")
 
         # 初始化資料
         self.balance = 0.0
         self.transactions = []
-
+        
+        # 定義預設的類別選項
+        self.categories = ["飲食", "交通", "娛樂", "購物", "薪資", "投資", "其他"]
+        
         # --- 建立使用者介面 (UI) ---
-
+        
         # 1. 餘額顯示區域
         self.balance_frame = tk.Frame(master, padx=10, pady=10, relief=tk.RIDGE, borderwidth=2)
         self.balance_frame.pack(pady=10, fill='x')
@@ -25,49 +27,58 @@ class ExpenseTrackerApp:
         self.balance_label = tk.Label(self.balance_frame, textvariable=self.balance_var, font=('Arial', 18, 'bold'), fg="green")
         self.balance_label.pack(side=tk.RIGHT, padx=10)
 
-        # 2. 新增記錄輸入區域
-        self.input_frame = tk.Frame(master, padx=10, pady=10)
-        self.input_frame.pack(pady=5)
+        # 2. 新增記錄輸入區域 (使用 LabelFrame 分組)
+        self.input_group = tk.LabelFrame(master, text="新增交易", padx=10, pady=10)
+        self.input_group.pack(pady=5, padx=10, fill='x')
         
-        # 金額輸入
-        tk.Label(self.input_frame, text="金額 (絕對值):").grid(row=0, column=0, padx=5, pady=5, sticky='w')
-        self.amount_entry = tk.Entry(self.input_frame, width=15)
-        self.amount_entry.grid(row=0, column=1, padx=5, pady=5)
-
-        # 類別輸入
-        tk.Label(self.input_frame, text="類別:").grid(row=1, column=0, padx=5, pady=5, sticky='w')
-        self.category_entry = tk.Entry(self.input_frame, width=15)
-        self.category_entry.grid(row=1, column=1, padx=5, pady=5)
+        # Row 0: 交易類型下拉選單
+        tk.Label(self.input_group, text="交易類型:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        self.type_var = tk.StringVar(value="支出") # 預設為支出
+        self.type_combo = ttk.Combobox(self.input_group, textvariable=self.type_var, values=["支出", "收入"], state="readonly", width=12)
+        self.type_combo.grid(row=0, column=1, padx=5, pady=5, sticky='w')
         
-        # 描述/備註輸入
-        tk.Label(self.input_frame, text="備註 (選填):").grid(row=2, column=0, padx=5, pady=5, sticky='w')
-        self.description_entry = tk.Entry(self.input_frame, width=15)
-        self.description_entry.grid(row=2, column=1, padx=5, pady=5)
+        # Row 0: 金額輸入
+        tk.Label(self.input_group, text="金額 (絕對值):").grid(row=0, column=2, padx=10, pady=5, sticky='w')
+        self.amount_entry = tk.Entry(self.input_group, width=15)
+        self.amount_entry.grid(row=0, column=3, padx=5, pady=5, sticky='w')
 
-        # 3. 按鈕區域
+        # Row 1: 類別下拉選單
+        tk.Label(self.input_group, text="類別:").grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        self.category_var = tk.StringVar(value=self.categories[0]) # 預設為第一個選項
+        self.category_combo = ttk.Combobox(self.input_group, textvariable=self.category_var, values=self.categories, state="readonly", width=12)
+        self.category_combo.grid(row=1, column=1, padx=5, pady=5, sticky='w')
+        
+        # Row 1: 描述/備註輸入
+        tk.Label(self.input_group, text="備註 (選填):").grid(row=1, column=2, padx=10, pady=5, sticky='w')
+        self.description_entry = tk.Entry(self.input_group, width=20)
+        self.description_entry.grid(row=1, column=3, padx=5, pady=5, sticky='w')
+
+        # 3. 合併的新增按鈕
         self.button_frame = tk.Frame(master)
-        self.button_frame.pack(pady=10)
+        self.button_frame.pack(pady=5)
 
-        # 新增收入按鈕
-        tk.Button(self.button_frame, text="➕ 記為收入", command=lambda: self.add_transaction("收入"), bg='light green').pack(side=tk.LEFT, padx=10)
+        tk.Button(self.button_frame, text="✅ 新增記錄", command=self.add_transaction, font=('Arial', 12, 'bold'), bg='lightblue', width=20).pack(padx=10)
         
-        # 新增支出按鈕
-        tk.Button(self.button_frame, text="➖ 記為支出", command=lambda: self.add_transaction("支出"), bg='salmon').pack(side=tk.LEFT, padx=10)
-        
-        # 4. 交易記錄表格 (使用 Treeview)
-        self.tree = ttk.Treeview(master, columns=("Type", "Amount", "Category", "Balance"), show='headings', height=8)
+        # 4. 交易記錄表格 (Treeview)
+        self.tree = ttk.Treeview(master, columns=("Type", "Amount", "Category", "Desc", "Balance"), show='headings', height=10)
         self.tree.heading("Type", text="類型")
         self.tree.heading("Amount", text="金額")
         self.tree.heading("Category", text="類別")
+        self.tree.heading("Desc", text="備註")
         self.tree.heading("Balance", text="餘額")
         
         # 設定欄位寬度
-        self.tree.column("Type", width=80, anchor='center')
-        self.tree.column("Amount", width=100, anchor='e')
-        self.tree.column("Category", width=120, anchor='w')
-        self.tree.column("Balance", width=120, anchor='e')
+        self.tree.column("Type", width=60, anchor='center')
+        self.tree.column("Amount", width=80, anchor='e')
+        self.tree.column("Category", width=80, anchor='w')
+        self.tree.column("Desc", width=150, anchor='w')
+        self.tree.column("Balance", width=100, anchor='e')
         
         self.tree.pack(padx=10, pady=10, fill='x')
+
+        # 初始化表格顏色標籤
+        self.tree.tag_configure('income_tag', background='#e0ffe0') # 淺綠色
+        self.tree.tag_configure('expense_tag', background='#ffe0e0') # 淺紅色
 
     def update_balance_display(self):
         """更新餘額顯示標籤的文字和顏色"""
@@ -87,30 +98,25 @@ class ExpenseTrackerApp:
             
         # 插入新紀錄 (由最新到最舊顯示)
         for record in reversed(self.transactions):
-            # 格式化金額顯示
             amount_display = f"{record['amount']:.2f}"
             balance_display = f"{record['new_balance']:.2f}"
-            
-            # 決定顏色標籤 (tag)
             tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
             
             self.tree.insert("", tk.END, values=(
                 record['type'], 
                 amount_display, 
-                record['category'], 
+                record['category'],
+                record['description'],
                 balance_display
             ), tags=(tag,))
 
-        # 設定表格顏色 (可選)
-        self.tree.tag_configure('income_tag', background='#e0ffe0') # 淺綠色
-        self.tree.tag_configure('expense_tag', background='#ffe0e0') # 淺紅色
-
-    def add_transaction(self, transaction_type):
+    def add_transaction(self):
         """處理新增交易的邏輯"""
         try:
             # 1. 取得並驗證輸入
+            transaction_type = self.type_var.get()
+            category = self.category_var.get()
             amount_str = self.amount_entry.get()
-            category = self.category_entry.get().strip()
             description = self.description_entry.get().strip()
 
             if not amount_str or not category:
@@ -144,7 +150,6 @@ class ExpenseTrackerApp:
 
             # 5. 清空輸入欄位
             self.amount_entry.delete(0, tk.END)
-            self.category_entry.delete(0, tk.END)
             self.description_entry.delete(0, tk.END)
             
         except ValueError:
@@ -154,11 +159,6 @@ class ExpenseTrackerApp:
 
 # --- 啟動應用程式 ---
 if __name__ == "__main__":
-    # 建立主視窗物件
     root = tk.Tk()
-    
-    # 建立應用程式實例
     app = ExpenseTrackerApp(root)
-    
-    # 進入主循環，讓視窗保持開啟並等待使用者操作
     root.mainloop()
