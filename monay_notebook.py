@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from tkinter import ttk 
+from tkinter import ttk
 
 # --- 設定帳號密碼 (簡單示範，實際應用應使用更安全的儲存方式) ---
 VALID_USERNAME = "user"
@@ -35,7 +35,7 @@ class LoginWindow:
         style.configure('Login.TButton', 
                         font=('Microsoft YaHei', 10, 'bold'), 
                         padding=5,
-                        foreground='white', 
+                        foreground='#0000E3', 
                         background='#000093')
         style.map('Login.TButton', background=[('active', '#0080FF')])
 
@@ -96,7 +96,7 @@ class ExpenseTrackerApp:
         
         # 設定按鈕樣式
         style.configure('TButton', 
-                        foreground='white', 
+                        foreground='#0000E3', 
                         background=PRIMARY_COLOR, 
                         font=('Microsoft YaHei', 12, 'bold'),
                         padding=8, 
@@ -105,7 +105,7 @@ class ExpenseTrackerApp:
         
         # 設定刪除按鈕樣式 (使用紅色強調)
         style.configure('Delete.TButton', 
-                        foreground='white', 
+                        foreground='#0000E3', 
                         background='#FF3333', # 紅色
                         font=('Microsoft YaHei', 12, 'bold'),
                         padding=8, 
@@ -210,9 +210,9 @@ class ExpenseTrackerApp:
         vsb.pack(side='right', fill='y')
         self.tree.configure(yscrollcommand=vsb.set)
 
-        # 設定行顏色標籤 (與配色主題呼應)
-        self.tree.tag_configure('income_tag', background='#CCEEFF') 
-        self.tree.tag_configure('expense_tag', background='#FFFFFF') 
+        # 設定行顏色標籤
+        self.tree.tag_configure('income_tag', background='#E6FFE6', foreground='green')  # 淡綠色背景，綠色文字
+        self.tree.tag_configure('expense_tag', background='#FFE6E6', foreground='red') # 淡紅色背景，紅色文字
         
         # --- 新增刪除按鈕框架 ---
         self.delete_frame = tk.Frame(self.right_frame, bg='#F0F8FF')
