@@ -47,13 +47,13 @@ class LoginWindow:
         ttk.Label(login_frame, text="帳號:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
         self.username_entry = ttk.Entry(login_frame, width=25)
         self.username_entry.grid(row=0, column=1, padx=5, pady=5)
-        self.username_entry.insert(0, VALID_USERNAME) # 預填帳號方便測試
+#        self.username_entry.insert(0, VALID_USERNAME) # 預填帳號方便測試
         
         # --- 密碼輸入 ---
         ttk.Label(login_frame, text="密碼:").grid(row=1, column=0, padx=5, pady=5, sticky='w')
         self.password_entry = ttk.Entry(login_frame, show="*", width=25)
         self.password_entry.grid(row=1, column=1, padx=5, pady=5)
-        self.password_entry.insert(0, VALID_PASSWORD) # 預填密碼方便測試
+#        self.password_entry.insert(0, VALID_PASSWORD) # 預填密碼方便測試
         
         # --- 登入按鈕 ---
         ttk.Button(login_frame, 
