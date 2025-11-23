@@ -35,7 +35,7 @@ class LoginWindow:
         style.configure('Login.TButton', 
                         font=('Microsoft YaHei', 10, 'bold'), 
                         padding=5,
-                        foreground='#0000E3', 
+                        foreground='white', 
                         background='#000093')
         style.map('Login.TButton', background=[('active', '#0080FF')])
 
@@ -47,23 +47,14 @@ class LoginWindow:
         ttk.Label(login_frame, text="帳號:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
         self.username_entry = ttk.Entry(login_frame, width=25)
         self.username_entry.grid(row=0, column=1, padx=5, pady=5)
-#        self.username_entry.insert(0, VALID_USERNAME) # 預填帳號方便測試
         
         # --- 密碼輸入 ---
         ttk.Label(login_frame, text="密碼:").grid(row=1, column=0, padx=5, pady=5, sticky='w')
         self.password_entry = ttk.Entry(login_frame, show="*", width=25)
         self.password_entry.grid(row=1, column=1, padx=5, pady=5)
-#        self.password_entry.insert(0, VALID_PASSWORD) # 預填密碼方便測試
         
         # --- 登入按鈕 ---
-        ttk.Button(login_frame, 
-                   text="🔑 登入",  
-                   command=self.attempt_login, 
-                   style='Login.TButton').grid(row=2, 
-                                               column=0, 
-                                               columnspan=2, 
-                                               pady=15, 
-                                               sticky='we')
+        ttk.Button(login_frame, text="🔑 登入", command=self.attempt_login, style='Login.TButton').grid(row=2, column=0, columnspan=2, pady=15, sticky='we')
 
         # 綁定 Enter 鍵
         self.login_window.bind('<Return>', lambda event: self.attempt_login())
@@ -105,12 +96,21 @@ class ExpenseTrackerApp:
         
         # 設定按鈕樣式
         style.configure('TButton', 
-                        foreground='#0000E3', 
+                        foreground='white', 
                         background=PRIMARY_COLOR, 
                         font=('Microsoft YaHei', 12, 'bold'),
                         padding=8, 
                         borderwidth=0)
         style.map('TButton', background=[('active', SECONDARY_COLOR)])
+        
+        # 設定刪除按鈕樣式 (使用紅色強調)
+        style.configure('Delete.TButton', 
+                        foreground='white', 
+                        background='#FF3333', # 紅色
+                        font=('Microsoft YaHei', 12, 'bold'),
+                        padding=8, 
+                        borderwidth=0)
+        style.map('Delete.TButton', background=[('active', '#FF6666')])
         
         # 設定表格(Treeview)樣式
         style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background=SECONDARY_COLOR, foreground='white')
@@ -132,8 +132,8 @@ class ExpenseTrackerApp:
         self.main_paned_window.add(self.left_frame, weight=30) 
 
         # 1. 餘額顯示區域 (已調整大小)
-        self.balance_frame = tk.Frame(self.left_frame, bg='white', padx=10, pady=5, relief=tk.RAISED, borderwidth=1) # 縮小 padx/pady
-        self.balance_frame.pack(pady=8, fill='x') # 縮小外層 pady
+        self.balance_frame = tk.Frame(self.left_frame, bg='white', padx=10, pady=5, relief=tk.RAISED, borderwidth=1) 
+        self.balance_frame.pack(pady=8, fill='x') 
 
         # 縮小標題字體：從 14 調整為 12
         tk.Label(self.balance_frame, text="💵 當前總餘額:", font=('Microsoft YaHei', 12), bg='white').pack(side=tk.LEFT, padx=5) 
@@ -213,6 +213,16 @@ class ExpenseTrackerApp:
         # 設定行顏色標籤 (與配色主題呼應)
         self.tree.tag_configure('income_tag', background='#CCEEFF') 
         self.tree.tag_configure('expense_tag', background='#FFFFFF') 
+        
+        # --- 新增刪除按鈕框架 ---
+        self.delete_frame = tk.Frame(self.right_frame, bg='#F0F8FF')
+        self.delete_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Button(self.delete_frame, 
+                   text="🗑️ 刪除選定記錄", 
+                   command=self.delete_transaction, 
+                   style='Delete.TButton').pack(fill='x')
+
 
         # 初始化餘額顯示
         self.update_balance_display()
@@ -220,7 +230,7 @@ class ExpenseTrackerApp:
 
     def update_balance_display(self):
         """更新餘額顯示標籤的文字和顏色"""
-        PRIMARY_COLOR = '#0000E3'
+        PRIMARY_COLOR = '#000093' 
         
         self.balance_var.set(f"{self.balance:.2f} 元")
         
@@ -230,23 +240,87 @@ class ExpenseTrackerApp:
             self.balance_label.config(fg="red")
 
     def update_transaction_list(self):
-        """清空並重新載入交易記錄表格"""
-        for item in self.tree.get_children():
+        """清空並重新載入交易記錄表格，並將內部資料與表格ID綁定"""
+        
+        # 1. 取得現有的 Treeview 項目 ID
+        current_ids = self.tree.get_children()
+        
+        # 2. 刪除所有舊項目
+        for item in current_ids:
             self.tree.delete(item)
             
+        # 3. 插入新紀錄 (由最新到最舊顯示)
+        # 注意：我們使用 reversed() 來確保最新紀錄在最上方
+        # 由於每次更新列表都會重新計算 new_balance，所以我們不用擔心刪除造成的餘額變動
+        
+        # 這裡需要一個映射來知道 Treeview 的 ID 對應到 self.transactions 列表中的哪個索引
+        # 但由於 Treeview ID 是不穩定的，我們將依靠 self.transactions 列表的索引
+        # 我們將列表中的交易按原順序賦予一個 ID，但插入時仍是倒序
+        
         # 插入新紀錄 (由最新到最舊顯示)
-        for record in reversed(self.transactions):
+        for index, record in enumerate(reversed(self.transactions)):
             amount_display = f"{record['amount']:.2f}"
             balance_display = f"{record['new_balance']:.2f}"
             tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
             
-            self.tree.insert("", tk.END, values=(
+            # 使用列表中的索引作為 item ID (在 delete_transaction 時需要用到)
+            # 由於是倒序顯示，我們需要計算其在正序列表中的真實索引
+            original_index = len(self.transactions) - 1 - index
+            
+            # 插入項目，將其內部數據ID (Original Index) 作為 iid
+            self.tree.insert("", tk.END, iid=original_index, values=(
                 record['type'], 
                 amount_display, 
                 record['category'],
                 record['description'],
                 balance_display
             ), tags=(tag,))
+            
+    def recalculate_balance(self):
+        """重新計算總餘額並更新所有交易記錄中的 new_balance 欄位"""
+        self.balance = 0.0
+        for record in self.transactions:
+            transaction_amount = record['amount']
+            if record['type'] == '支出':
+                transaction_amount = -transaction_amount
+            
+            self.balance += transaction_amount
+            record['new_balance'] = self.balance # 更新每筆交易後的餘額
+            
+        self.update_balance_display()
+        self.update_transaction_list()
+            
+    def delete_transaction(self):
+        """刪除選中的交易記錄"""
+        selected_item_id = self.tree.focus() # 獲取當前選中項目的 iid (這是我們在 update_transaction_list 中設置的索引)
+        
+        if not selected_item_id:
+            messagebox.showwarning("刪除警告", "請先在表格中選中一條記錄。", parent=self.master)
+            return
+
+        try:
+            # 獲取 Treeview item ID (即交易在 self.transactions 中的索引)
+            # 由於 iid 儲存的是字串，需要轉換為整數
+            transaction_index_to_delete = int(selected_item_id) 
+
+            # 彈出確認視窗
+            if not messagebox.askyesno("確認刪除", "確定要刪除這筆交易記錄嗎？", parent=self.master):
+                return
+            
+            # 1. 從內部列表中刪除記錄
+            # 刪除指定索引的記錄
+            del self.transactions[transaction_index_to_delete]
+            
+            # 2. 重新計算餘額並更新介面
+            self.recalculate_balance()
+            
+            messagebox.showinfo("成功", "交易記錄已刪除。", parent=self.master)
+
+        except IndexError:
+            messagebox.showerror("錯誤", "無法找到該交易記錄。", parent=self.master)
+        except ValueError:
+            messagebox.showerror("錯誤", "選中的項目格式錯誤。", parent=self.master)
+
 
     def add_transaction(self):
         """處理新增交易的邏輯"""
@@ -265,25 +339,25 @@ class ExpenseTrackerApp:
                 messagebox.showerror("輸入錯誤", "金額必須是正數。")
                 return
 
-            # 2. 處理金額正負並更新餘額
-            transaction_amount = -amount if transaction_type == "支出" else amount
-            self.balance += transaction_amount
+            # 1. 計算新的餘額 (在新增時只需要計算一次)
+            transaction_amount_value = -amount if transaction_type == "支出" else amount
+            self.balance += transaction_amount_value
+            new_balance_after_add = self.balance # 記錄當前的新餘額
 
-            # 3. 建立記錄並儲存
+            # 2. 建立記錄並儲存
             record = {
                 "type": transaction_type,
                 "amount": amount,
                 "category": category,
                 "description": description,
-                "new_balance": self.balance
+                "new_balance": new_balance_after_add # 儲存交易後的餘額
             }
             self.transactions.append(record)
             
-            # 4. 更新介面
-            self.update_balance_display()
-            self.update_transaction_list()
+            # 3. 更新介面 (在新增時，需要重新計算所有項目的 new_balance，以確保餘額是正確累積的)
+            self.recalculate_balance()
 
-            # 5. 清空輸入欄位
+            # 4. 清空輸入欄位
             self.amount_entry.delete(0, tk.END)
             self.description_entry.delete(0, tk.END)
             
