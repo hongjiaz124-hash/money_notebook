@@ -1,10 +1,15 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
+import json
+import os # 引入 os 模組用於檢查檔案
 
 # --- 設定帳號密碼 (簡單示範，實際應用應使用更安全的儲存方式) ---
 VALID_USERNAME = "user"
 VALID_PASSWORD = "123"
+
+# --- 檔案設定 ---
+FILE_NAME = "transactions.json"
 
 class LoginWindow:
     """
@@ -87,7 +92,18 @@ class ExpenseTrackerApp:
         master.geometry("1000x600") 
         master.configure(bg='#00E3E3') 
         
-        # --- 設定風格與配色 ---
+        # 綁定主視窗關閉事件，確保在關閉前存檔
+        master.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # 初始化資料
+        self.balance = 0.0
+        self.transactions = []
+        self.categories = ["飲食", "交通", "娛樂", "購物", "薪資", "投資", "其他"]
+        
+        # --- 載入存檔數據 ---
+        self.load_transactions()
+        
+        # --- 設定風格與配色 (此處省略與存檔無關的風格設定，保持原樣) ---
         style = ttk.Style()
         PRIMARY_COLOR = '#000093' # 深藍色
         SECONDARY_COLOR = '#0080FF' # 淺藍色
@@ -116,12 +132,7 @@ class ExpenseTrackerApp:
         style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background=SECONDARY_COLOR, foreground='white')
         style.configure("Treeview", rowheight=28)
 
-        # 初始化資料
-        self.balance = 0.0
-        self.transactions = []
-        self.categories = ["飲食", "交通", "娛樂", "購物", "薪資", "投資", "其他"]
-        
-        # --- 介面佈局：主框架分為左右兩欄 ---
+        # --- 介面佈局：主框架分為左右兩欄 (此處省略與存檔無關的介面佈局，保持原樣) ---
         self.main_paned_window = ttk.PanedWindow(master, orient=tk.HORIZONTAL)
         self.main_paned_window.pack(fill='both', expand=True, padx=10, pady=10)
 
@@ -131,15 +142,13 @@ class ExpenseTrackerApp:
         self.left_frame = tk.Frame(self.main_paned_window, bg='#F0F8FF', padx=10, pady=10)
         self.main_paned_window.add(self.left_frame, weight=30) 
 
-        # 1. 餘額顯示區域 (已調整大小)
+        # 1. 餘額顯示區域 
         self.balance_frame = tk.Frame(self.left_frame, bg='white', padx=10, pady=5, relief=tk.RAISED, borderwidth=1) 
         self.balance_frame.pack(pady=8, fill='x') 
 
-        # 縮小標題字體：從 14 調整為 12
         tk.Label(self.balance_frame, text="💵 當前總餘額:", font=('Microsoft YaHei', 12), bg='white').pack(side=tk.LEFT, padx=5) 
         
         self.balance_var = tk.StringVar(value=f"{self.balance:.2f} 元")
-        # 縮小金額字體：從 20 調整為 16
         self.balance_label = tk.Label(self.balance_frame, textvariable=self.balance_var, font=('Microsoft YaHei', 16, 'bold'), bg='white', fg=PRIMARY_COLOR)
         self.balance_label.pack(side=tk.RIGHT, padx=5)
 
@@ -171,7 +180,7 @@ class ExpenseTrackerApp:
 
         self.input_group.grid_columnconfigure(1, weight=1) 
 
-        # 3. 新增記錄按鈕 (含 Icon)
+        # 3. 新增記錄按鈕 
         self.button_frame = tk.Frame(self.left_frame, bg='#F0F8FF')
         self.button_frame.pack(pady=15, fill='x')
 
@@ -224,9 +233,52 @@ class ExpenseTrackerApp:
                    style='Delete.TButton').pack(fill='x')
 
 
-        # 初始化餘額顯示
-        self.update_balance_display()
+        # 初始化餘額顯示 (載入數據後重新顯示)
+        self.recalculate_balance()
 
+
+    def load_transactions(self):
+        """從 JSON 檔案載入交易記錄"""
+        if os.path.exists(FILE_NAME):
+            try:
+                with open(FILE_NAME, 'r', encoding='utf-8') as f:
+                    # 讀取交易列表
+                    data = json.load(f)
+                    self.transactions = data.get('transactions', [])
+                    
+                    # 確保所有數字欄位都是 float，避免 JSON 讀取時可能是 int
+                    for record in self.transactions:
+                        record['amount'] = float(record['amount'])
+                        record['new_balance'] = float(record['new_balance'])
+                        
+                messagebox.showinfo("載入成功", f"成功載入 {len(self.transactions)} 筆交易記錄。", parent=self.master)
+            except Exception as e:
+                messagebox.showerror("載入錯誤", f"無法讀取檔案 {FILE_NAME}: {e}", parent=self.master)
+                self.transactions = [] # 載入失敗則清空
+        else:
+            # 檔案不存在，正常啟動
+            # messagebox.showinfo("啟動提示", "未找到交易記錄檔案，將建立新檔案。", parent=self.master)
+            pass
+
+    def save_transactions(self):
+        """將交易記錄儲存到 JSON 檔案"""
+        data_to_save = {
+            # 為了簡化，我們只儲存交易列表。餘額在載入後會重新計算。
+            'transactions': self.transactions
+        }
+        try:
+            with open(FILE_NAME, 'w', encoding='utf-8') as f:
+                # 使用 ensure_ascii=False 以便正確儲存中文
+                json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            # 存檔失敗不影響應用程式運行，但需提示用戶
+            messagebox.showerror("存檔錯誤", f"無法儲存檔案 {FILE_NAME}: {e}", parent=self.master)
+
+    def on_closing(self):
+        """應用程式關閉時的處理，確保存檔後再退出"""
+        if messagebox.askyesno("離開應用程式", "確定要關閉程式嗎？所有變動將自動儲存。", parent=self.master):
+            self.save_transactions()
+            self.master.destroy()
 
     def update_balance_display(self):
         """更新餘額顯示標籤的文字和顏色"""
@@ -242,28 +294,16 @@ class ExpenseTrackerApp:
     def update_transaction_list(self):
         """清空並重新載入交易記錄表格，並將內部資料與表格ID綁定"""
         
-        # 1. 取得現有的 Treeview 項目 ID
-        current_ids = self.tree.get_children()
-        
-        # 2. 刪除所有舊項目
-        for item in current_ids:
+        # 1. 取得現有的 Treeview 項目 ID 並刪除
+        for item in self.tree.get_children():
             self.tree.delete(item)
             
-        # 3. 插入新紀錄 (由最新到最舊顯示)
-        # 注意：我們使用 reversed() 來確保最新紀錄在最上方
-        # 由於每次更新列表都會重新計算 new_balance，所以我們不用擔心刪除造成的餘額變動
-        
-        # 這裡需要一個映射來知道 Treeview 的 ID 對應到 self.transactions 列表中的哪個索引
-        # 但由於 Treeview ID 是不穩定的，我們將依靠 self.transactions 列表的索引
-        # 我們將列表中的交易按原順序賦予一個 ID，但插入時仍是倒序
-        
-        # 插入新紀錄 (由最新到最舊顯示)
+        # 2. 插入新紀錄 (由最新到最舊顯示)
         for index, record in enumerate(reversed(self.transactions)):
             amount_display = f"{record['amount']:.2f}"
             balance_display = f"{record['new_balance']:.2f}"
             tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
             
-            # 使用列表中的索引作為 item ID (在 delete_transaction 時需要用到)
             # 由於是倒序顯示，我們需要計算其在正序列表中的真實索引
             original_index = len(self.transactions) - 1 - index
             
@@ -291,16 +331,14 @@ class ExpenseTrackerApp:
         self.update_transaction_list()
             
     def delete_transaction(self):
-        """刪除選中的交易記錄"""
-        selected_item_id = self.tree.focus() # 獲取當前選中項目的 iid (這是我們在 update_transaction_list 中設置的索引)
+        """刪除選中的交易記錄，並觸發存檔"""
+        selected_item_id = self.tree.focus() 
         
         if not selected_item_id:
             messagebox.showwarning("刪除警告", "請先在表格中選中一條記錄。", parent=self.master)
             return
 
         try:
-            # 獲取 Treeview item ID (即交易在 self.transactions 中的索引)
-            # 由於 iid 儲存的是字串，需要轉換為整數
             transaction_index_to_delete = int(selected_item_id) 
 
             # 彈出確認視窗
@@ -308,11 +346,13 @@ class ExpenseTrackerApp:
                 return
             
             # 1. 從內部列表中刪除記錄
-            # 刪除指定索引的記錄
             del self.transactions[transaction_index_to_delete]
             
             # 2. 重新計算餘額並更新介面
             self.recalculate_balance()
+            
+            # 3. 存檔
+            self.save_transactions() 
             
             messagebox.showinfo("成功", "交易記錄已刪除。", parent=self.master)
 
@@ -323,7 +363,7 @@ class ExpenseTrackerApp:
 
 
     def add_transaction(self):
-        """處理新增交易的邏輯"""
+        """處理新增交易的邏輯，並觸發存檔"""
         try:
             transaction_type = self.type_var.get()
             category = self.category_var.get()
@@ -354,10 +394,13 @@ class ExpenseTrackerApp:
             }
             self.transactions.append(record)
             
-            # 3. 更新介面 (在新增時，需要重新計算所有項目的 new_balance，以確保餘額是正確累積的)
+            # 3. 更新介面
             self.recalculate_balance()
+            
+            # 4. 存檔
+            self.save_transactions()
 
-            # 4. 清空輸入欄位
+            # 5. 清空輸入欄位
             self.amount_entry.delete(0, tk.END)
             self.description_entry.delete(0, tk.END)
             
