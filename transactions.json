@@ -13,6 +13,41 @@
             "category": "飲食",
             "description": "",
             "new_balance": 666565.0
+        },
+        {
+            "type": "支出",
+            "amount": 12446.0,
+            "category": "購物",
+            "description": "",
+            "new_balance": 654119.0
+        },
+        {
+            "type": "支出",
+            "amount": 4577.0,
+            "category": "交通",
+            "description": "",
+            "new_balance": 649542.0
+        },
+        {
+            "type": "支出",
+            "amount": 53356.0,
+            "category": "投資",
+            "description": "",
+            "new_balance": 596186.0
+        },
+        {
+            "type": "支出",
+            "amount": 111.0,
+            "category": "飲食",
+            "description": "",
+            "new_balance": 596075.0
+        },
+        {
+            "type": "支出",
+            "amount": 111.0,
+            "category": "其他",
+            "description": "",
+            "new_balance": 595964.0
         }
     ]
 }
