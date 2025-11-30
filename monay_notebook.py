@@ -197,27 +197,12 @@ class ExpenseTrackerApp:
         # --- 設定風格與配色 ---
         style = ttk.Style()
         PRIMARY_COLOR = '#000093' 
-        SECONDARY_COLOR = '#0080FF' 
         
-        style.configure('.', font=('Microsoft YaHei', 10))
-        
-        style.configure('TButton', 
-                        foreground='white', 
-                        background=PRIMARY_COLOR, 
-                        font=('Microsoft YaHei', 12, 'bold'),
-                        padding=8, 
-                        borderwidth=0)
-        style.map('TButton', background=[('active', SECONDARY_COLOR)])
-        
-        style.configure('Delete.TButton', 
-                        foreground='white', 
-                        background='#FF3333', 
-                        font=('Microsoft YaHei', 12, 'bold'),
-                        padding=8, 
-                        borderwidth=0)
+        style.configure('TButton', foreground='white', background=PRIMARY_COLOR, font=('Microsoft YaHei', 12, 'bold'), padding=8, borderwidth=0)
+        style.map('TButton', background=[('active', '#0080FF')])
+        style.configure('Delete.TButton', foreground='white', background='#FF3333', font=('Microsoft YaHei', 12, 'bold'), padding=8, borderwidth=0)
         style.map('Delete.TButton', background=[('active', '#FF6666')])
-        
-        style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background=SECONDARY_COLOR, foreground='white')
+        style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background='#0080FF', foreground='white')
         style.configure("Treeview", rowheight=28)
 
         # --- 介面佈局：主框架分為左右兩欄 ---
@@ -274,35 +259,42 @@ class ExpenseTrackerApp:
 
         self.input_group.grid_columnconfigure(1, weight=1) 
         
-        # 3. 日期查詢區域
-        self.search_group = tk.LabelFrame(self.left_frame, text="🔍 日期查詢", font=('Microsoft YaHei', 12, 'bold'), bg='#F0F8FF', fg=PRIMARY_COLOR, padx=10, pady=10)
+        # 3. 查詢篩選器區域 (包含日期和類別)
+        self.search_group = tk.LabelFrame(self.left_frame, text="🔍 查詢篩選器", font=('Microsoft YaHei', 12, 'bold'), bg='#F0F8FF', fg=PRIMARY_COLOR, padx=10, pady=10)
         self.search_group.pack(pady=10, fill='x')
         
-        # 查詢 - 起始日期
-        tk.Label(self.search_group, text="從:", bg='#F0F8FF').grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        # --- 類別篩選 Listbox ---
+        tk.Label(self.search_group, text="類別篩選 (多選，Ctrl+點擊):", bg='#F0F8FF').grid(row=0, column=0, columnspan=2, padx=5, pady=(5, 0), sticky='w')
+        
+        self.category_listbox = tk.Listbox(self.search_group, selectmode=tk.MULTIPLE, height=5, exportselection=False, font=('Microsoft YaHei', 10))
+        for cat in self.categories:
+            self.category_listbox.insert(tk.END, cat)
+        self.category_listbox.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='we')
+        
+        # --- 日期篩選 ---
+        tk.Label(self.search_group, text="從 (日期):", bg='#F0F8FF').grid(row=2, column=0, padx=5, pady=5, sticky='w')
         one_year_ago = (dt.datetime.now() - dt.timedelta(days=365)).strftime(self.DATE_FORMAT)
         self.start_date_var = tk.StringVar(value=one_year_ago)
-        ttk.Entry(self.search_group, textvariable=self.start_date_var, width=15).grid(row=0, column=1, padx=5, pady=5, sticky='we')
+        ttk.Entry(self.search_group, textvariable=self.start_date_var, width=15).grid(row=2, column=1, padx=5, pady=5, sticky='we')
         
-        # 查詢 - 結束日期
-        tk.Label(self.search_group, text="到:", bg='#F0F8FF').grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        tk.Label(self.search_group, text="到 (日期):", bg='#F0F8FF').grid(row=3, column=0, padx=5, pady=5, sticky='w')
         today_date = dt.datetime.now().strftime(self.DATE_FORMAT)
         self.end_date_var = tk.StringVar(value=today_date)
-        ttk.Entry(self.search_group, textvariable=self.end_date_var, width=15).grid(row=1, column=1, padx=5, pady=5, sticky='we')
+        ttk.Entry(self.search_group, textvariable=self.end_date_var, width=15).grid(row=3, column=1, padx=5, pady=5, sticky='we')
         
-        # 查詢按鈕
+        # --- 按鈕 ---
         ttk.Button(self.search_group, 
                    text="🚀 執行查詢", 
                    command=self.search_transactions_by_date, 
-                   style='TButton').grid(row=2, column=0, columnspan=2, pady=10, sticky='we')
+                   style='TButton').grid(row=4, column=0, columnspan=2, pady=10, sticky='we')
         
-        # 重設按鈕 (連動圖表)
         ttk.Button(self.search_group, 
-                   text="🔁 顯示全部記錄", 
+                   text="🔁 顯示全部記錄/重設篩選", 
                    command=lambda: self.reset_view_to_all(), 
-                   style='TButton').grid(row=3, column=0, columnspan=2, pady=(0, 5), sticky='we')
+                   style='TButton').grid(row=5, column=0, columnspan=2, pady=(0, 5), sticky='we')
 
         self.search_group.grid_columnconfigure(1, weight=1)
+        self.search_group.grid_rowconfigure(1, weight=1) 
 
         # 4. 功能按鈕區域 
         self.button_frame = tk.Frame(self.left_frame, bg='#F0F8FF')
@@ -363,9 +355,9 @@ class ExpenseTrackerApp:
         self.chart_tab = ttk.Frame(self.notebook, padding="10 10 10 0")
         self.notebook.add(self.chart_tab, text='📊 支出分析', sticky='nsew')
         
-        tk.Label(self.chart_tab, text="📊 依類別劃分的總支出分析圖", font=('Microsoft YaHei', 14, 'bold'), fg=PRIMARY_COLOR).pack(pady=5)
+        tk.Label(self.chart_tab, text="📊 交易分析圖表", font=('Microsoft YaHei', 14, 'bold'), fg=PRIMARY_COLOR).pack(pady=5)
 
-        # 創建一個帶有垂直捲軸的框架來容納圓餅圖 
+        # 創建一個帶有垂直捲軸的框架來容納圖表 
         self.canvas_frame = tk.Frame(self.chart_tab)
         self.canvas_frame.pack(fill='both', expand=True)
         
@@ -383,7 +375,9 @@ class ExpenseTrackerApp:
         def _on_canvas_configure(event):
             canvas_width = event.width
             self.chart_canvas.itemconfigure(self.chart_window_id, width=canvas_width)
-            self.chart_canvas.configure(scrollregion=self.chart_canvas.bbox("all"))
+            # 在 chart_container 內部的 Matplotlib 圖表需要手動更新 scrollregion
+            self.chart_container.update_idletasks()
+            self.chart_canvas.config(scrollregion=self.chart_canvas.bbox("all"))
 
         self.chart_canvas.bind("<Configure>", _on_canvas_configure)
         
@@ -393,94 +387,29 @@ class ExpenseTrackerApp:
         self.recalculate_balance()
 
     # --------------------------------------------------------------------
-    # --- 圖表與篩選連動方法 ---
+    # --- 核心數據與篩選方法 ---
     # --------------------------------------------------------------------
 
+    def get_selected_categories(self) -> List[str]:
+        """獲取 Listbox 中選中的所有類別名稱。"""
+        selected_indices = self.category_listbox.curselection()
+        return [self.category_listbox.get(i) for i in selected_indices]
+
     def reset_view_to_all(self):
-        """重設顯示，顯示所有記錄並更新圖表。"""
+        """重設篩選器，顯示所有記錄並更新圖表。"""
+        self.category_listbox.selection_clear(0, tk.END) # 清除類別選中
+        
+        # 顯示所有記錄
         self.update_transaction_list(self.transactions)
         self.update_chart_if_active()
 
-    def update_chart_if_active(self):
-        """檢查圖表標籤頁是否為活動頁面，如果是則更新圖表。"""
-        selected_tab_text = self.notebook.tab(self.notebook.select(), "text")
-        if '支出分析' in selected_tab_text:
-            self.draw_chart_in_tab()
-
-    def on_tab_change(self, event):
-        """處理 Notebook 標籤頁切換事件"""
-        selected_tab = self.notebook.tab(self.notebook.select(), "text")
-        
-        if '支出分析' in selected_tab:
-            self.draw_chart_in_tab() 
-
-    def draw_chart_in_tab(self):
-        """清除舊圖表並在 chart_container 中繪製新圖表，使用 current_filtered_transactions。"""
-        for widget in self.chart_container.winfo_children():
-            widget.destroy()
-            
-        self.create_pie_chart(self.chart_container, self.current_filtered_transactions)
-
-
-    def create_pie_chart(self, frame, transactions_to_analyze: List[Dict[str, Any]]):
-        """計算支出並在指定框架內繪製圓餅圖 (使用 NT$)"""
-        
-        CURRENCY_SYMBOL = "NT$" 
-
-        # 使用傳入的列表進行分析
-        expenses = [t for t in transactions_to_analyze if t['type'] == '支出']
-        
-        if not expenses:
-            tk.Label(frame, text="目前沒有支出記錄，無法產生圓餅圖。", font=('Microsoft YaHei', 12), fg='red', bg='#F0F8FF').pack(pady=50)
-            return
-
-        category_totals: Dict[str, float] = {}
-        for t in expenses:
-            category = t['category']
-            amount = t['amount']
-            category_totals[category] = category_totals.get(category, 0.0) + amount
-
-        labels = list(category_totals.keys())
-        sizes = list(category_totals.values())
-        total_expense = sum(sizes)
-        
-        def make_autopct(values):
-            def my_autopct(pct):
-                absolute = round(pct/100. * total_expense, 2)
-                return f'{pct:.1f}%\n({CURRENCY_SYMBOL}{absolute:.2f})'
-            return my_autopct
-
-        fig, ax = plt.subplots(figsize=(8, 8)) 
-        
-        plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
-        plt.rcParams['axes.unicode_minus'] = False 
-        
-        wedges, texts, autotexts = ax.pie(
-            sizes, 
-            labels=labels, 
-            autopct=make_autopct(sizes), 
-            startangle=90, 
-            textprops={'fontsize': 10} 
-        )
-        
-        ax.set_title("依類別劃分的總支出百分比", fontsize=14, fontweight='bold')
-        ax.axis('equal')  
-        
-        canvas = FigureCanvasTkAgg(fig, master=frame)
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.pack(fill=tk.BOTH, expand=True)
-        canvas.draw()
-
-    # --------------------------------------------------------------------
-    # --- 核心數據方法 ---
-    # --------------------------------------------------------------------
-    
     def search_transactions_by_date(self):
-        """根據使用者輸入的日期範圍篩選交易記錄並更新表格及圖表"""
+        """根據日期範圍和類別篩選交易記錄並更新表格及圖表"""
         
         start_date_str = self.start_date_var.get()
         end_date_str = self.end_date_var.get()
-
+        selected_categories = self.get_selected_categories()
+        
         try:
             start_date = dt.datetime.strptime(start_date_str, self.DATE_FORMAT).date()
             end_date = dt.datetime.strptime(end_date_str, self.DATE_FORMAT).date()
@@ -493,15 +422,21 @@ class ExpenseTrackerApp:
             for record in self.transactions:
                 record_date = dt.datetime.strptime(record['date'], self.DATE_FORMAT).date()
                 
-                if start_date <= record_date <= end_date:
+                # 1. 檢查日期範圍
+                date_match = start_date <= record_date <= end_date
+                
+                # 2. 檢查類別 (如果 selected_categories 非空才進行篩選)
+                category_match = True
+                if selected_categories:
+                    category_match = record['category'] in selected_categories
+                
+                if date_match and category_match:
                     filtered_transactions.append(record)
             
             self.update_transaction_list(filtered_transactions)
-            
-            # 更新圖表 (如果圖表標籤頁是活動頁)
             self.update_chart_if_active()
             
-            messagebox.showinfo("查詢結果", f"在 {start_date_str} 到 {end_date_str} 期間，找到 {len(filtered_transactions)} 筆記錄。", parent=self.master)
+            messagebox.showinfo("查詢結果", f"在指定條件下，找到 {len(filtered_transactions)} 筆記錄。", parent=self.master)
             
         except ValueError:
             messagebox.showerror("日期格式錯誤", f"請確保日期格式為 {self.DATE_FORMAT} (例如: 2023-11-30)。", parent=self.master)
@@ -509,7 +444,7 @@ class ExpenseTrackerApp:
             messagebox.showerror("查詢錯誤", f"發生錯誤: {e}", parent=self.master)
 
     def load_transactions(self):
-        """從檔案載入交易，並處理舊數據兼容性 (若無日期則補上今日)"""
+        """從檔案載入交易，並處理舊數據兼容性"""
         if os.path.exists(TRANSACTIONS_FILE):
             try:
                 with open(TRANSACTIONS_FILE, 'r', encoding='utf-8') as f:
@@ -555,7 +490,6 @@ class ExpenseTrackerApp:
         for item in self.tree.get_children():
             self.tree.delete(item)
             
-        # 儲存目前顯示的列表 (用於圖表連動)
         self.current_filtered_transactions = display_list 
             
         if not display_list:
@@ -564,6 +498,7 @@ class ExpenseTrackerApp:
 
         # 這裡需要根據 display_list 找到它們在 self.transactions 中的原始索引
         indexed_records = []
+        # 由於 display_list 是 self.transactions 的子集，我們需要找出索引
         for i, record in enumerate(self.transactions):
             if record in display_list: 
                  indexed_records.append((i, record))
@@ -610,6 +545,7 @@ class ExpenseTrackerApp:
             return
 
         try:
+            # Treeview IID 存儲的是在 self.transactions 中的原始索引
             transaction_index_to_delete = int(selected_item_id) 
             if not messagebox.askyesno("確認刪除", "確定要刪除這筆交易記錄嗎？", parent=self.master):
                 return
@@ -673,6 +609,161 @@ class ExpenseTrackerApp:
             messagebox.showerror("輸入錯誤", "金額必須是有效的數字！")
         except Exception as e:
             messagebox.showerror("錯誤", f"發生了一個錯誤: {e}")
+            
+    # --------------------------------------------------------------------
+    # --- 動態圖表繪製方法 ---
+    # --------------------------------------------------------------------
+
+    def update_chart_if_active(self):
+        """檢查圖表標籤頁是否為活動頁面，如果是則更新圖表。"""
+        selected_tab_text = self.notebook.tab(self.notebook.select(), "text")
+        if '支出分析' in selected_tab_text:
+            self.draw_chart_in_tab()
+
+    def on_tab_change(self, event):
+        """處理 Notebook 標籤頁切換事件"""
+        selected_tab = self.notebook.tab(self.notebook.select(), "text")
+        
+        if '支出分析' in selected_tab:
+            self.draw_chart_in_tab() 
+
+    def draw_chart_in_tab(self):
+        """清除舊圖表並根據當前篩選狀態繪製圓餅圖、折線圖或長條圖。"""
+        for widget in self.chart_container.winfo_children():
+            widget.destroy()
+            
+        transactions_to_analyze = self.current_filtered_transactions
+        selected_categories = self.get_selected_categories()
+        
+        if not transactions_to_analyze:
+            tk.Label(self.chart_container, text="目前沒有記錄，無法產生分析圖表。", font=('Microsoft YaHei', 12), fg='red', bg='#F0F8FF').pack(pady=50)
+            return
+            
+        if selected_categories:
+            # --- 模式 2: 類別篩選啟動 -> 顯示折線圖和長條圖 ---
+            self.create_line_chart(self.chart_container, transactions_to_analyze)
+            self.create_monthly_bar_chart(self.chart_container, transactions_to_analyze)
+        else:
+            # --- 模式 1: 無類別篩選 -> 顯示圓餅圖 (總覽) ---
+            self.create_pie_chart(self.chart_container, transactions_to_analyze)
+
+        # 重新計算捲軸區域
+        self.chart_container.update_idletasks()
+        self.chart_canvas.config(scrollregion=self.chart_canvas.bbox("all"))
+
+    def create_pie_chart(self, frame, transactions_to_analyze: List[Dict[str, Any]]):
+        """繪製圓餅圖 (總覽模式)"""
+        
+        CURRENCY_SYMBOL = "NT$" 
+        expenses = [t for t in transactions_to_analyze if t['type'] == '支出']
+        
+        if not expenses:
+            tk.Label(frame, text="目前沒有支出記錄，無法產生圓餅圖。", font=('Microsoft YaHei', 12), fg='red', bg='#F0F8FF').pack(pady=50)
+            return
+
+        category_totals: Dict[str, float] = {}
+        for t in expenses:
+            category_totals[t['category']] = category_totals.get(t['category'], 0.0) + t['amount']
+
+        labels = list(category_totals.keys())
+        sizes = list(category_totals.values())
+        total_expense = sum(sizes)
+        
+        def make_autopct(values):
+            def my_autopct(pct):
+                absolute = round(pct/100. * total_expense, 2)
+                return f'{pct:.1f}%\n({CURRENCY_SYMBOL}{absolute:.2f})'
+            return my_autopct
+
+        # 設置圖表大小
+        fig, ax = plt.subplots(figsize=(8, 8)) 
+        
+        # 繪製圓餅圖
+        ax.pie(sizes, labels=labels, autopct=make_autopct(sizes), startangle=90, textprops={'fontsize': 10})
+        ax.set_title("依類別劃分的總支出百分比 (總覽)", fontsize=14, fontweight='bold')
+        ax.axis('equal')  
+        
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        canvas.draw()
+
+
+    def create_line_chart(self, frame, transactions_to_analyze: List[Dict[str, Any]]):
+        """繪製金額淨變動對時間的折線圖 (篩選模式)"""
+        
+        time_series: Dict[dt.date, float] = {}
+        
+        for t in transactions_to_analyze:
+            date_obj = dt.datetime.strptime(t['date'], self.DATE_FORMAT).date()
+            # 計算每日淨變動：收入為正，支出為負
+            signed_amount = t['amount'] if t['type'] == '收入' else -t['amount']
+            
+            time_series[date_obj] = time_series.get(date_obj, 0.0) + signed_amount
+
+        sorted_dates = sorted(time_series.keys())
+        y_values = [time_series[d] for d in sorted_dates]
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        
+        ax.plot(sorted_dates, y_values, marker='o', linestyle='-', color='#0080FF')
+        
+        ax.set_title("金額淨變動趨勢 (選定類別)", fontsize=14, fontweight='bold')
+        ax.set_xlabel("日期", fontsize=12)
+        ax.set_ylabel("每日淨金額變動 (NT$)", fontsize=12)
+        ax.grid(True, linestyle='--', alpha=0.7)
+        fig.autofmt_xdate()
+
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        canvas.draw()
+
+
+    def create_monthly_bar_chart(self, frame, transactions_to_analyze: List[Dict[str, Any]]):
+        """繪製每月收入與支出的長條圖 (篩選模式)"""
+        
+        monthly_data: Dict[tuple, Dict[str, float]] = {}
+
+        for t in transactions_to_analyze:
+            date_obj = dt.datetime.strptime(t['date'], self.DATE_FORMAT)
+            key = (date_obj.year, date_obj.month)
+            
+            if key not in monthly_data:
+                monthly_data[key] = {'income': 0.0, 'expense': 0.0}
+            
+            amount = t['amount']
+            if t['type'] == '收入':
+                monthly_data[key]['income'] += amount
+            else:
+                monthly_data[key]['expense'] += amount
+
+        sorted_months = sorted(monthly_data.keys())
+        month_labels = [f"{y}-{m:02d}" for y, m in sorted_months]
+        income_values = [monthly_data[m]['income'] for m in sorted_months]
+        expense_values = [monthly_data[m]['expense'] for m in sorted_months]
+
+        x = range(len(sorted_months))
+        width = 0.35 
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        
+        rects1 = ax.bar([i - width/2 for i in x], income_values, width, label='收入', color='#17A2B8')
+        rects2 = ax.bar([i + width/2 for i in x], expense_values, width, label='支出', color='#DC3545')
+        
+        ax.set_title("每月收入與支出比較 (選定類別)", fontsize=14, fontweight='bold')
+        ax.set_ylabel("金額 (NT$)", fontsize=12)
+        ax.set_xticks(x)
+        ax.set_xticklabels(month_labels, rotation=45, ha="right")
+        ax.legend()
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        fig.tight_layout()
+
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        canvas.draw()
+
 
 def main():
     # 設置中文字體以支援 Matplotlib 圖表顯示
@@ -682,7 +773,7 @@ def main():
     root = tk.Tk()
     app = ExpenseTrackerApp(root)
     
-    # 登入成功後的回調函數 (因為 ExpenseTrackerApp 已經初始化，這裡不需要做額外操作)
+    # 登入成功後的回調函數 
     def start_app():
         pass 
 
