@@ -9,6 +9,9 @@ from typing import Dict, Any, List
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+# *** 變更點 1：引入 datetime 模組 ***
+import datetime as dt
+
 # --- 檔案設定 ---
 USERS_FILE = "users.json"
 TRANSACTIONS_FILE = "transactions.json"
@@ -35,10 +38,7 @@ def save_users(users: Dict[str, str]):
 
 
 class LoginWindow:
-    """
-    登入/註冊視窗類別，負責處理身份驗證
-    （此部分與您提供的程式碼一致，故省略部分內容，確保功能完整）
-    """
+    """ 登入/註冊視窗類別... (內容省略，與之前版本相同) """
     def __init__(self, master, on_success_callback):
         self.master = master
         self.on_success_callback = on_success_callback
@@ -174,6 +174,10 @@ class LoginWindow:
 
 
 class ExpenseTrackerApp:
+    
+    # *** 變更點 2-1：設定日期格式 ***
+    DATE_FORMAT = "%Y-%m-%d" # 固定的日期格式
+
     def __init__(self, master):
         self.master = master
         master.title("💰 金錢追蹤器")
@@ -240,27 +244,35 @@ class ExpenseTrackerApp:
         self.input_group = tk.LabelFrame(self.left_frame, text="➕ 新增交易", font=('Microsoft YaHei', 12, 'bold'), bg='#F0F8FF', fg=PRIMARY_COLOR, padx=10, pady=10)
         self.input_group.pack(pady=10, fill='x')
         
-        # 交易類型
-        tk.Label(self.input_group, text="類型:", bg='#F0F8FF').grid(row=0, column=0, padx=5, pady=8, sticky='w')
+        # *** 變更點 3-1：新增日期輸入欄位 (Row 0) ***
+        tk.Label(self.input_group, text="日期:", bg='#F0F8FF').grid(row=0, column=0, padx=5, pady=8, sticky='w')
+        # 設定預設值為今日日期
+        self.date_var = tk.StringVar(value=dt.datetime.now().strftime(self.DATE_FORMAT))
+        self.date_entry = ttk.Entry(self.input_group, textvariable=self.date_var, width=20)
+        self.date_entry.grid(row=0, column=1, padx=5, pady=8, sticky='we')
+        
+        # 交易類型 (Row 1)
+        tk.Label(self.input_group, text="類型:", bg='#F0F8FF').grid(row=1, column=0, padx=5, pady=8, sticky='w')
         self.type_var = tk.StringVar(value="支出")
         self.type_combo = ttk.Combobox(self.input_group, textvariable=self.type_var, values=["支出", "收入"], state="readonly", width=15)
-        self.type_combo.grid(row=0, column=1, padx=5, pady=8, sticky='we')
+        self.type_combo.grid(row=1, column=1, padx=5, pady=8, sticky='we')
         
-        # 金額
-        tk.Label(self.input_group, text="金額:", bg='#F0F8FF').grid(row=1, column=0, padx=5, pady=8, sticky='w')
+        # 金額 (Row 2)
+        tk.Label(self.input_group, text="金額:", bg='#F0F8FF').grid(row=2, column=0, padx=5, pady=8, sticky='w')
         self.amount_entry = ttk.Entry(self.input_group, width=20)
-        self.amount_entry.grid(row=1, column=1, padx=5, pady=8, sticky='we')
+        self.amount_entry.grid(row=2, column=1, padx=5, pady=8, sticky='we')
 
-        # 類別
-        tk.Label(self.input_group, text="類別:", bg='#F0F8FF').grid(row=2, column=0, padx=5, pady=8, sticky='w')
+        # 類別 (Row 3)
+        tk.Label(self.input_group, text="類別:", bg='#F0F8FF').grid(row=3, column=0, padx=5, pady=8, sticky='w')
         self.category_var = tk.StringVar(value=self.categories[0])
         self.category_combo = ttk.Combobox(self.input_group, textvariable=self.category_var, values=self.categories, state="readonly", width=15)
-        self.category_combo.grid(row=2, column=1, padx=5, pady=8, sticky='we')
+        self.category_combo.grid(row=3, column=1, padx=5, pady=8, sticky='we')
         
-        # 備註
-        tk.Label(self.input_group, text="備註:", bg='#F0F8FF').grid(row=3, column=0, padx=5, pady=8, sticky='w')
+        # 備註 (Row 4)
+        tk.Label(self.input_group, text="備註:", bg='#F0F8FF').grid(row=4, column=0, padx=5, pady=8, sticky='w')
         self.description_entry = ttk.Entry(self.input_group, width=20)
-        self.description_entry.grid(row=3, column=1, padx=5, pady=8, sticky='we')
+        self.description_entry.grid(row=4, column=1, padx=5, pady=8, sticky='we')
+        # *** 變更點 3-1 結束 ***
 
         self.input_group.grid_columnconfigure(1, weight=1) 
 
@@ -270,7 +282,6 @@ class ExpenseTrackerApp:
 
         ttk.Button(self.button_frame, text="💾 儲存並新增記錄", command=self.add_transaction, style='TButton').pack(fill='x', padx=10)
         
-        # *** 新增分析圖按鈕 ***
         ttk.Button(self.button_frame, 
                    text="📊 顯示花費分析圖", 
                    command=self.show_analysis_window, 
@@ -288,18 +299,22 @@ class ExpenseTrackerApp:
         self.tree_frame = tk.Frame(self.right_frame, bg='#F0F8FF')
         self.tree_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
-        self.tree = ttk.Treeview(self.tree_frame, columns=("Type", "Amount", "Category", "Desc", "Balance"), show='headings', height=10)
+        # *** 變更點 4：調整 Treeview 欄位，新增 "Date" ***
+        self.tree = ttk.Treeview(self.tree_frame, columns=("Date", "Type", "Amount", "Category", "Desc", "Balance"), show='headings', height=10)
+        self.tree.heading("Date", text="日期")
         self.tree.heading("Type", text="類型")
         self.tree.heading("Amount", text="金額")
         self.tree.heading("Category", text="類別")
         self.tree.heading("Desc", text="備註")
         self.tree.heading("Balance", text="餘額")
         
+        self.tree.column("Date", width=100, anchor='center') # 日期寬度
         self.tree.column("Type", width=70, anchor='center')
         self.tree.column("Amount", width=100, anchor='e')
         self.tree.column("Category", width=100, anchor='w')
         self.tree.column("Desc", width=180, anchor='w')
         self.tree.column("Balance", width=120, anchor='e')
+        # *** 變更點 4 結束 ***
         
         self.tree.pack(side='left', fill='both', expand=True)
         
@@ -321,60 +336,51 @@ class ExpenseTrackerApp:
         self.recalculate_balance()
 
 
-    # --- 分析圖表方法 ---
+    # --- 分析圖表方法 (create_pie_chart 函式已調整幣別為 NT$，在此保留) ---
     
     def create_pie_chart(self, frame):
         """計算支出並在指定框架內繪製圓餅圖"""
         
-        # 1. 篩選出所有支出 (type == '支出')
+        CURRENCY_SYMBOL = "NT$" 
+
         expenses = [t for t in self.transactions if t['type'] == '支出']
         
         if not expenses:
             tk.Label(frame, text="目前沒有支出記錄，無法產生圓餅圖。", font=('Microsoft YaHei', 12), fg='red').pack(pady=50)
             return
 
-        # 2. 彙總每個類別的支出總額
         category_totals: Dict[str, float] = {}
         for t in expenses:
             category = t['category']
             amount = t['amount']
             category_totals[category] = category_totals.get(category, 0.0) + amount
 
-        # 3. 準備 Matplotlib 資料
         labels = list(category_totals.keys())
         sizes = list(category_totals.values())
-        
-        # 計算總支出
         total_expense = sum(sizes)
         
-        # 為了美觀，將所有標籤加上百分比
         def make_autopct(values):
             def my_autopct(pct):
-                absolute = int(round(pct/100.*total_expense))
-                return f'{pct:.1f}%\n(NT.${absolute})'
+                absolute = round(pct/100. * total_expense, 2)
+                return f'{pct:.1f}%\n({CURRENCY_SYMBOL}{absolute:.2f})'
             return my_autopct
 
-        # 4. 繪製圓餅圖
         fig, ax = plt.subplots(figsize=(6, 5))
         
-        # 設置中文字體 (若系統沒有 SimHei，可能需要替換)
         plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
-        plt.rcParams['axes.unicode_minus'] = False # 解決負號顯示問題
+        plt.rcParams['axes.unicode_minus'] = False 
         
-        # 繪製圓餅圖
         wedges, texts, autotexts = ax.pie(
             sizes, 
             labels=labels, 
-            autopct=make_autopct(sizes), # 顯示百分比和絕對值
+            autopct=make_autopct(sizes), 
             startangle=90, 
-            textprops={'fontsize': 10} # 標籤字體大小
+            textprops={'fontsize': 10} 
         )
         
-        # 設置標題
         ax.set_title("依類別劃分的總支出百分比", fontsize=14, fontweight='bold')
-        ax.axis('equal')  # 確保圓餅圖是圓形的
+        ax.axis('equal')  
         
-        # 5. 將圖表嵌入 Tkinter 框架
         canvas = FigureCanvasTkAgg(fig, master=frame)
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill=tk.BOTH, expand=True)
@@ -390,45 +396,50 @@ class ExpenseTrackerApp:
         analysis_window.resizable(False, False)
         analysis_window.configure(bg='#FFFFFF')
         
-        # 讓分析視窗保持在最前面
         analysis_window.transient(self.master)
         analysis_window.grab_set()
 
-        # 圖表容器框架
         chart_frame = tk.Frame(analysis_window, bg='white')
         chart_frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
-        # 繪製圓餅圖
         self.create_pie_chart(chart_frame)
 
-        # 關閉按鈕
         ttk.Button(analysis_window, 
                    text="關閉圖表", 
                    command=analysis_window.destroy, 
                    style='TButton').pack(pady=10)
         
-        # 等待分析視窗關閉
         self.master.wait_window(analysis_window)
 
 
-    # --- 其他數據處理方法 (省略未變動部分) ---
+    # --- 數據處理方法 ---
 
+    # *** 變更點 5：修改 load_transactions 函式，兼容舊數據並確保日期存在 ***
     def load_transactions(self):
-        # ... (未變動)
+        """從檔案載入交易，並處理舊數據兼容性 (若無日期則補上今日)"""
         if os.path.exists(TRANSACTIONS_FILE):
             try:
                 with open(TRANSACTIONS_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.transactions = data.get('transactions', [])
+                    
+                    today_str = dt.datetime.now().strftime(self.DATE_FORMAT)
+                    
                     for record in self.transactions:
-                        record['amount'] = float(record['amount'])
-                        record['new_balance'] = float(record['new_balance'])
+                        # 確保 'date' 欄位存在
+                        if 'date' not in record:
+                            record['date'] = today_str 
+                        
+                        # 確保數值型別正確
+                        record['amount'] = float(record.get('amount', 0.0))
+                        record['new_balance'] = float(record.get('new_balance', 0.0))
+
             except Exception as e:
                 messagebox.showerror("載入錯誤", f"無法讀取檔案 {TRANSACTIONS_FILE}: {e}", parent=self.master)
                 self.transactions = [] 
-
+    # *** 變更點 5 結束 ***
+    
     def save_transactions(self):
-        # ... (未變動)
         data_to_save = {'transactions': self.transactions}
         try:
             with open(TRANSACTIONS_FILE, 'w', encoding='utf-8') as f:
@@ -437,13 +448,11 @@ class ExpenseTrackerApp:
             messagebox.showerror("存檔錯誤", f"無法儲存檔案 {TRANSACTIONS_FILE}: {e}", parent=self.master)
 
     def on_closing(self):
-        # ... (未變動)
         if messagebox.askyesno("離開應用程式", "確定要關閉程式嗎？所有變動將自動儲存。", parent=self.master):
             self.save_transactions()
             self.master.destroy()
 
     def update_balance_display(self):
-        # ... (未變動)
         PRIMARY_COLOR = '#000093' 
         self.balance_var.set(f"{self.balance:.2f} 元")
         if self.balance >= 0:
@@ -451,26 +460,38 @@ class ExpenseTrackerApp:
         else:
             self.balance_label.config(fg="red")
 
+    # *** 變更點 6：修改 update_transaction_list 函式，新增日期欄位並依日期/時間排序 ***
     def update_transaction_list(self):
-        # ... (未變動)
+        """清空表格並重新載入、排序交易紀錄"""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        for index, record in enumerate(reversed(self.transactions)):
+            
+        # 1. 根據日期排序 (最新的在最前面)
+        # 為了穩定性，同時考慮日期和在列表中的原始索引作為次要排序鍵
+        sorted_transactions = sorted(
+            enumerate(self.transactions), 
+            key=lambda item: (item[1]['date'], item[0]), # 以日期為主，原始索引為輔
+            reverse=True # 降冪排序，最新日期在前
+        )
+        
+        for original_index, record in sorted_transactions:
             amount_display = f"{record['amount']:.2f}"
             balance_display = f"{record['new_balance']:.2f}"
             tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
-            original_index = len(self.transactions) - 1 - index
+
             self.tree.insert("", tk.END, iid=original_index, values=(
+                record['date'],              # <--- 新增日期
                 record['type'], 
                 amount_display, 
                 record['category'],
                 record['description'],
                 balance_display
             ), tags=(tag,))
+    # *** 變更點 6 結束 ***
             
     def recalculate_balance(self):
-        # ... (未變動)
         self.balance = 0.0
+        # 注意：重新計算餘額時，必須按照原始的交易順序，而不是日期順序
         for record in self.transactions:
             transaction_amount = record['amount']
             if record['type'] == '支出':
@@ -481,13 +502,13 @@ class ExpenseTrackerApp:
         self.update_transaction_list()
             
     def delete_transaction(self):
-        # ... (未變動)
         selected_item_id = self.tree.focus() 
         if not selected_item_id:
             messagebox.showwarning("刪除警告", "請先在表格中選中一條記錄。", parent=self.master)
             return
 
         try:
+            # 這裡的 selected_item_id 是原始 index (iid)，不是 Treeview 中的行號
             transaction_index_to_delete = int(selected_item_id) 
             if not messagebox.askyesno("確認刪除", "確定要刪除這筆交易記錄嗎？", parent=self.master):
                 return
@@ -500,16 +521,24 @@ class ExpenseTrackerApp:
         except Exception:
             messagebox.showerror("錯誤", "無法刪除該交易記錄。", parent=self.master)
 
+    # *** 變更點 7：修改 add_transaction 函式，加入日期驗證和儲存 ***
     def add_transaction(self):
-        # ... (未變動)
         try:
+            date_str = self.date_var.get().strip() # 獲取日期
             transaction_type = self.type_var.get()
             category = self.category_var.get()
             amount_str = self.amount_entry.get()
             description = self.description_entry.get().strip()
 
-            if not amount_str or not category:
-                messagebox.showerror("輸入錯誤", "金額與類別欄位不能為空！")
+            if not amount_str or not category or not date_str:
+                messagebox.showerror("輸入錯誤", "日期、金額與類別欄位不能為空！")
+                return
+
+            # 驗證日期格式
+            try:
+                dt.datetime.strptime(date_str, self.DATE_FORMAT)
+            except ValueError:
+                messagebox.showerror("輸入錯誤", f"日期格式不正確，請使用 {self.DATE_FORMAT} 格式 (例如: 2023-11-30)。")
                 return
 
             amount = float(amount_str)
@@ -522,6 +551,7 @@ class ExpenseTrackerApp:
             new_balance_after_add = self.balance 
 
             record = {
+                "date": date_str,  # <--- 新增日期欄位
                 "type": transaction_type,
                 "amount": amount,
                 "category": category,
@@ -536,11 +566,14 @@ class ExpenseTrackerApp:
 
             self.amount_entry.delete(0, tk.END)
             self.description_entry.delete(0, tk.END)
+            # 新增記錄後，將日期重設為今日日期，方便下次輸入
+            self.date_var.set(dt.datetime.now().strftime(self.DATE_FORMAT))
             
         except ValueError:
             messagebox.showerror("輸入錯誤", "金額必須是有效的數字！")
         except Exception as e:
             messagebox.showerror("錯誤", f"發生了一個錯誤: {e}")
+    # *** 變更點 7 結束 ***
 
 
 # --- 啟動應用程式 ---

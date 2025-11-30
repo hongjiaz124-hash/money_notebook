@@ -5,49 +5,80 @@
             "amount": 12345.0,
             "category": "飲食",
             "description": "",
-            "new_balance": -12345.0
+            "new_balance": -12345.0,
+            "date": "2025-11-30"
         },
         {
             "type": "收入",
             "amount": 678910.0,
             "category": "飲食",
             "description": "",
-            "new_balance": 666565.0
+            "new_balance": 666565.0,
+            "date": "2025-11-30"
         },
         {
             "type": "支出",
             "amount": 12446.0,
             "category": "購物",
             "description": "",
-            "new_balance": 654119.0
+            "new_balance": 654119.0,
+            "date": "2025-11-30"
         },
         {
             "type": "支出",
             "amount": 4577.0,
             "category": "交通",
             "description": "",
-            "new_balance": 649542.0
+            "new_balance": 649542.0,
+            "date": "2025-11-30"
         },
         {
             "type": "支出",
             "amount": 53356.0,
             "category": "投資",
             "description": "",
-            "new_balance": 596186.0
+            "new_balance": 596186.0,
+            "date": "2025-11-30"
         },
         {
             "type": "支出",
             "amount": 111.0,
             "category": "飲食",
             "description": "",
-            "new_balance": 596075.0
+            "new_balance": 596075.0,
+            "date": "2025-11-30"
         },
         {
             "type": "支出",
             "amount": 111.0,
             "category": "其他",
             "description": "",
-            "new_balance": 595964.0
+            "new_balance": 595964.0,
+            "date": "2025-11-30"
+        },
+        {
+            "type": "支出",
+            "amount": 111.0,
+            "category": "飲食",
+            "description": "1",
+            "new_balance": 595853.0,
+            "date": "2025-11-30"
+        },
+        {
+            "type": "支出",
+            "amount": 10000.0,
+            "category": "娛樂",
+            "description": "",
+            "new_balance": 585853.0,
+            "date": "2025-11-30"
+        },
+        {
+            "date": "2025-12-01",
+            "type": "支出",
+            "amount": 10.0,
+            "category": "飲食",
+            "description": "",
+            "new_balance": 585843.0
         }
     ]
 }
