@@ -2,29 +2,52 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 import json
-import os # 引入 os 模組用於檢查檔案
-
-# --- 設定帳號密碼 (簡單示範，實際應用應使用更安全的儲存方式) ---
-VALID_USERNAME = "user"
-VALID_PASSWORD = "123"
+import os 
+from typing import Dict, Any, List
 
 # --- 檔案設定 ---
-FILE_NAME = "transactions.json"
+USERS_FILE = "users.json"
+TRANSACTIONS_FILE = "transactions.json"
+
+# --- 用戶資料處理函數 ---
+
+def load_users() -> Dict[str, str]:
+    """從 JSON 檔案載入用戶帳號密碼。"""
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            # 如果檔案損壞，返回空字典
+            return {}
+    # 檔案不存在，創建一個預設帳號
+    return {"user": "123"} 
+
+def save_users(users: Dict[str, str]):
+    """將用戶帳號密碼儲存到 JSON 檔案。"""
+    try:
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(users, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        # 在控制台顯示錯誤，但不彈出視窗（不干擾主程序）
+        print(f"ERROR: 無法儲存用戶檔案: {e}")
+
 
 class LoginWindow:
     """
-    登入視窗類別，負責處理身份驗證
+    登入/註冊視窗類別，負責處理身份驗證
     """
     def __init__(self, master, on_success_callback):
         self.master = master
         self.on_success_callback = on_success_callback
+        self.users = load_users() # 載入所有用戶資料
         
         # 隱藏主視窗，直到登入成功
         self.master.withdraw() 
         
         self.login_window = tk.Toplevel(master)
-        self.login_window.title("🔐 請登入")
-        self.login_window.geometry("350x200")
+        self.login_window.title("🔐 請登入或註冊")
+        self.login_window.geometry("350x230") # 調整高度以容納註冊按鈕
         self.login_window.configure(bg='#F0F8FF')
         self.login_window.resizable(False, False)
         
@@ -40,12 +63,12 @@ class LoginWindow:
         style.configure('Login.TButton', 
                         font=('Microsoft YaHei', 10, 'bold'), 
                         padding=5,
-                        foreground='#0000E3', 
+                        foreground='white', # 更改為白色，與深色背景更搭
                         background='#000093')
         style.map('Login.TButton', background=[('active', '#0080FF')])
 
         # 登入框架
-        login_frame = tk.Frame(self.login_window, bg='#F0F8FF', padx=20, pady=20)
+        login_frame = tk.Frame(self.login_window, bg='#F0F8FF', padx=20, pady=10)
         login_frame.pack(expand=True)
         
         # --- 帳號輸入 ---
@@ -58,8 +81,14 @@ class LoginWindow:
         self.password_entry = ttk.Entry(login_frame, show="*", width=25)
         self.password_entry.grid(row=1, column=1, padx=5, pady=5)
         
-        # --- 登入按鈕 ---
-        ttk.Button(login_frame, text="🔑 登入", command=self.attempt_login, style='Login.TButton').grid(row=2, column=0, columnspan=2, pady=15, sticky='we')
+        # --- 按鈕框架 (登入/註冊) ---
+        button_frame = tk.Frame(login_frame, bg='#F0F8FF')
+        button_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky='we')
+        
+        ttk.Button(button_frame, text="🔑 登入", command=self.attempt_login, style='Login.TButton').pack(side=tk.LEFT, expand=True, fill='x', padx=(0, 5))
+        
+        # 新增註冊按鈕
+        ttk.Button(button_frame, text="📝 註冊", command=self.show_registration_window, style='Login.TButton').pack(side=tk.RIGHT, expand=True, fill='x', padx=(5, 0))
 
         # 綁定 Enter 鍵
         self.login_window.bind('<Return>', lambda event: self.attempt_login())
@@ -67,15 +96,18 @@ class LoginWindow:
         # 設置焦點
         self.username_entry.focus_set()
 
+    # --- 登入與視窗控制 ---
+
     def attempt_login(self):
         """嘗試登入並驗證帳號密碼"""
         username = self.username_entry.get()
         password = self.password_entry.get()
         
-        if username == VALID_USERNAME and password == VALID_PASSWORD:
-            self.login_window.destroy()  # 關閉登入視窗
-            self.master.deiconify()      # 顯示主視窗
-            self.on_success_callback()   # 呼叫成功回撥函數來建立主應用程式
+        # 驗證用戶資料
+        if self.users.get(username) == password:
+            self.login_window.destroy() # 關閉登入視窗
+            self.master.deiconify() # 顯示主視窗
+            self.on_success_callback()  # 呼叫成功回撥函數來建立主應用程式
         else:
             messagebox.showerror("登入失敗", "帳號或密碼錯誤，請重新輸入。", parent=self.login_window)
             self.password_entry.delete(0, tk.END) # 清空密碼欄位
@@ -84,6 +116,85 @@ class LoginWindow:
         """處理登入視窗關閉事件，強制關閉整個應用程式"""
         if messagebox.askyesno("離開應用程式", "確定要關閉程式嗎？", parent=self.login_window):
             self.master.destroy()
+
+    # --- 註冊功能 ---
+
+    def show_registration_window(self):
+        """顯示註冊視窗"""
+        reg_window = tk.Toplevel(self.login_window)
+        reg_window.title("📝 註冊新帳號")
+        reg_window.geometry("350x250")
+        reg_window.configure(bg='#F0F8FF')
+        reg_window.resizable(False, False)
+        
+        # 讓註冊視窗保持在最前面
+        reg_window.transient(self.login_window)
+        reg_window.grab_set()
+        # reg_window.grab_set() 和 wait_window 一起實現模式化視窗 (Modal Window)
+
+        reg_frame = tk.Frame(reg_window, bg='#F0F8FF', padx=20, pady=10)
+        reg_frame.pack(expand=True)
+
+        # 帳號
+        ttk.Label(reg_frame, text="新帳號:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        self.reg_username_entry = ttk.Entry(reg_frame, width=25)
+        self.reg_username_entry.grid(row=0, column=1, padx=5, pady=5)
+        
+        # 密碼
+        ttk.Label(reg_frame, text="密碼:").grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        self.reg_password_entry = ttk.Entry(reg_frame, show="*", width=25)
+        self.reg_password_entry.grid(row=1, column=1, padx=5, pady=5)
+        
+        # 確認密碼
+        ttk.Label(reg_frame, text="確認密碼:").grid(row=2, column=0, padx=5, pady=5, sticky='w')
+        self.reg_confirm_entry = ttk.Entry(reg_frame, show="*", width=25)
+        self.reg_confirm_entry.grid(row=2, column=1, padx=5, pady=5)
+        
+        # 註冊按鈕
+        ttk.Button(reg_frame, text="✔ 確認註冊", 
+                   command=lambda: self.attempt_register(reg_window), 
+                   style='Login.TButton').grid(row=3, column=0, columnspan=2, pady=15, sticky='we')
+
+        reg_window.bind('<Return>', lambda event: self.attempt_register(reg_window))
+        self.reg_username_entry.focus_set()
+
+        # ⭐️ 確保所有元件都建立完畢後才開始等待
+        self.login_window.wait_window(reg_window)
+
+    def attempt_register(self, reg_window: tk.Toplevel):
+        """嘗試註冊新帳號，儲存到 JSON 檔案"""
+        username = self.reg_username_entry.get().strip()
+        password = self.reg_password_entry.get()
+        confirm_password = self.reg_confirm_entry.get()
+
+        if not username or not password or not confirm_password:
+            messagebox.showerror("註冊失敗", "所有欄位都不能為空。", parent=reg_window)
+            return
+
+        if password != confirm_password:
+            messagebox.showerror("註冊失敗", "兩次密碼輸入不一致。", parent=reg_window)
+            self.reg_password_entry.delete(0, tk.END)
+            self.reg_confirm_entry.delete(0, tk.END)
+            return
+
+        if username in self.users:
+            messagebox.showerror("註冊失敗", f"帳號 '{username}' 已存在，請使用其他名稱。", parent=reg_window)
+            return
+
+        # 儲存新用戶
+        self.users[username] = password
+        save_users(self.users) # 儲存到檔案
+        
+        messagebox.showinfo("註冊成功", f"帳號 '{username}' 註冊成功，請登入。", parent=reg_window)
+        
+        # 關閉註冊視窗並將新帳號填入登入欄位
+        self.username_entry.delete(0, tk.END)
+        self.username_entry.insert(0, username)
+        self.password_entry.delete(0, tk.END)
+        self.username_entry.focus_set()
+
+        reg_window.destroy()
+
 
 class ExpenseTrackerApp:
     def __init__(self, master):
@@ -97,13 +208,13 @@ class ExpenseTrackerApp:
         
         # 初始化資料
         self.balance = 0.0
-        self.transactions = []
+        self.transactions: List[Dict[str, Any]] = []
         self.categories = ["飲食", "交通", "娛樂", "購物", "薪資", "投資", "其他"]
         
         # --- 載入存檔數據 ---
         self.load_transactions()
         
-        # --- 設定風格與配色 (此處省略與存檔無關的風格設定，保持原樣) ---
+        # --- 設定風格與配色 ---
         style = ttk.Style()
         PRIMARY_COLOR = '#000093' # 深藍色
         SECONDARY_COLOR = '#0080FF' # 淺藍色
@@ -112,7 +223,7 @@ class ExpenseTrackerApp:
         
         # 設定按鈕樣式
         style.configure('TButton', 
-                        foreground='#0000E3', 
+                        foreground='white', 
                         background=PRIMARY_COLOR, 
                         font=('Microsoft YaHei', 12, 'bold'),
                         padding=8, 
@@ -121,7 +232,7 @@ class ExpenseTrackerApp:
         
         # 設定刪除按鈕樣式 (使用紅色強調)
         style.configure('Delete.TButton', 
-                        foreground='#0000E3', 
+                        foreground='white', 
                         background='#FF3333', # 紅色
                         font=('Microsoft YaHei', 12, 'bold'),
                         padding=8, 
@@ -132,7 +243,7 @@ class ExpenseTrackerApp:
         style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background=SECONDARY_COLOR, foreground='white')
         style.configure("Treeview", rowheight=28)
 
-        # --- 介面佈局：主框架分為左右兩欄 (此處省略與存檔無關的介面佈局，保持原樣) ---
+        # --- 介面佈局：主框架分為左右兩欄 ---
         self.main_paned_window = ttk.PanedWindow(master, orient=tk.HORIZONTAL)
         self.main_paned_window.pack(fill='both', expand=True, padx=10, pady=10)
 
@@ -220,7 +331,7 @@ class ExpenseTrackerApp:
         self.tree.configure(yscrollcommand=vsb.set)
 
         # 設定行顏色標籤
-        self.tree.tag_configure('income_tag', background='#E6FFE6', foreground='green')  # 淡綠色背景，綠色文字
+        self.tree.tag_configure('income_tag', background='#E6FFE6', foreground='green') # 淡綠色背景，綠色文字
         self.tree.tag_configure('expense_tag', background='#FFE6E6', foreground='red') # 淡紅色背景，紅色文字
         
         # --- 新增刪除按鈕框架 ---
@@ -237,42 +348,38 @@ class ExpenseTrackerApp:
         self.recalculate_balance()
 
 
+    # --- 數據處理方法 ---
+
     def load_transactions(self):
         """從 JSON 檔案載入交易記錄"""
-        if os.path.exists(FILE_NAME):
+        if os.path.exists(TRANSACTIONS_FILE):
             try:
-                with open(FILE_NAME, 'r', encoding='utf-8') as f:
-                    # 讀取交易列表
+                with open(TRANSACTIONS_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.transactions = data.get('transactions', [])
                     
-                    # 確保所有數字欄位都是 float，避免 JSON 讀取時可能是 int
+                    # 確保所有數字欄位都是 float
                     for record in self.transactions:
                         record['amount'] = float(record['amount'])
                         record['new_balance'] = float(record['new_balance'])
                         
                 messagebox.showinfo("載入成功", f"成功載入 {len(self.transactions)} 筆交易記錄。", parent=self.master)
             except Exception as e:
-                messagebox.showerror("載入錯誤", f"無法讀取檔案 {FILE_NAME}: {e}", parent=self.master)
+                messagebox.showerror("載入錯誤", f"無法讀取檔案 {TRANSACTIONS_FILE}: {e}", parent=self.master)
                 self.transactions = [] # 載入失敗則清空
         else:
-            # 檔案不存在，正常啟動
-            # messagebox.showinfo("啟動提示", "未找到交易記錄檔案，將建立新檔案。", parent=self.master)
-            pass
+            pass # 檔案不存在，正常啟動
 
     def save_transactions(self):
         """將交易記錄儲存到 JSON 檔案"""
         data_to_save = {
-            # 為了簡化，我們只儲存交易列表。餘額在載入後會重新計算。
             'transactions': self.transactions
         }
         try:
-            with open(FILE_NAME, 'w', encoding='utf-8') as f:
-                # 使用 ensure_ascii=False 以便正確儲存中文
+            with open(TRANSACTIONS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(data_to_save, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            # 存檔失敗不影響應用程式運行，但需提示用戶
-            messagebox.showerror("存檔錯誤", f"無法儲存檔案 {FILE_NAME}: {e}", parent=self.master)
+            messagebox.showerror("存檔錯誤", f"無法儲存檔案 {TRANSACTIONS_FILE}: {e}", parent=self.master)
 
     def on_closing(self):
         """應用程式關閉時的處理，確保存檔後再退出"""
@@ -304,7 +411,7 @@ class ExpenseTrackerApp:
             balance_display = f"{record['new_balance']:.2f}"
             tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
             
-            # 由於是倒序顯示，我們需要計算其在正序列表中的真實索引
+            # 由於是倒序顯示，計算其在正序列表中的真實索引
             original_index = len(self.transactions) - 1 - index
             
             # 插入項目，將其內部數據ID (Original Index) 作為 iid
@@ -379,10 +486,10 @@ class ExpenseTrackerApp:
                 messagebox.showerror("輸入錯誤", "金額必須是正數。")
                 return
 
-            # 1. 計算新的餘額 (在新增時只需要計算一次)
+            # 1. 計算新的餘額
             transaction_amount_value = -amount if transaction_type == "支出" else amount
             self.balance += transaction_amount_value
-            new_balance_after_add = self.balance # 記錄當前的新餘額
+            new_balance_after_add = self.balance 
 
             # 2. 建立記錄並儲存
             record = {
@@ -394,8 +501,11 @@ class ExpenseTrackerApp:
             }
             self.transactions.append(record)
             
-            # 3. 更新介面
-            self.recalculate_balance()
+            # 3. 更新介面 (會觸發 recalculate_balance 和 save_transactions)
+            # 由於我們已經手動計算了餘額並記錄了 new_balance，
+            # 這裡可以直接呼叫 update_balance_display 和 update_transaction_list 來簡化
+            self.update_balance_display()
+            self.update_transaction_list()
             
             # 4. 存檔
             self.save_transactions()
@@ -408,6 +518,7 @@ class ExpenseTrackerApp:
             messagebox.showerror("輸入錯誤", "金額必須是有效的數字！")
         except Exception as e:
             messagebox.showerror("錯誤", f"發生了一個錯誤: {e}")
+
 
 # --- 啟動應用程式 ---
 def start_app(root):
