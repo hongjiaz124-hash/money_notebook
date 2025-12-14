@@ -396,18 +396,18 @@ class ExpenseTrackerApp:
 
     def _setup_column_sorting(self):
         """將排序函數綁定到 Treeview 的所有欄位標題上。"""
-        # 您在 Treeview 中定義的所有欄位名稱
-        all_columns = ("Type", "Amount", "Category", "Desc", "Balance") 
+        
+        all_columns = ("Date", "Type", "Amount", "Category", "Desc", "Balance") 
         
         for col in all_columns:
-            # 獲取該欄位標題的現有文字
-            # 由於 Treeview 的 heading() 方法在創建時被調用過，我們需要重新設定 command
-            # 在您的代碼中，Treeview 欄位定義如下：
-            # self.tree.heading("Type", text="類型")
-            # ...
-            
-            # 使用 lambda 函數將當前欄位名稱 (col) 傳遞給 sort_column
+            # 使用 self.tree.heading() 的 command 參數來綁定點擊事件
+            # lambda 確保在點擊時才呼叫 sort_column，並將正確的欄位名稱 (c) 傳遞進去
             self.tree.heading(col, command=lambda c=col: self.sort_column(c))
+            
+            # 由於 self.tree.heading() 已經在 _update_heading_arrows 中設定過一次，
+            # 這裡重新設定 command 即可。
+
+
         
 
     # --------------------------------------------------------------------
@@ -517,8 +517,8 @@ class ExpenseTrackerApp:
         """更新所有欄位標題，只在當前排序欄位上顯示箭頭。"""
         # 您的中文標題映射 (根據您的 _setup_ui 進行調整)
         heading_map = {
-            "Type": "類型", "Amount": "金額", "Category": "類別", 
-            "Desc": "備註", "Balance": "餘額"
+            "Date": "日期", "Type": "類型", "Amount": "金額", 
+            "Category": "類別", "Desc": "備註", "Balance": "餘額"
         }
         
         arrow = " ▼" if is_descending else " ▲" # True: 降序 (大到小), False: 升序 (小到大)
@@ -547,16 +547,29 @@ class ExpenseTrackerApp:
         
         # 3. 定義 Key 函數以進行正確的排序
         is_numeric = col in ("Amount", "Balance")
+        is_date = col == "Date" # 判斷是否為日期欄位
         
         def natural_key(item):
             # item[0] 是欄位值
             val = item[0]
+            
             if is_numeric:
                 try:
                     return float(val) # 金額和餘額按數字排序
                 except ValueError:
                     return 0.0 # 處理無效數字
-            return val # 其他欄位按字串排序 (Type, Category, Desc)
+            
+            elif is_date:
+                # ⬇️ 日期排序邏輯：將日期字串轉換為 datetime 物件 ⬇️
+                try:
+                    # 使用 self.DATE_FORMAT 進行解析
+                    return dt.datetime.strptime(val, self.DATE_FORMAT)
+                except ValueError:
+                    # 如果解析失敗 (無效日期格式)，將其視為最早的日期，避免崩潰
+                    return dt.datetime.min 
+            
+            # 其他欄位 (Type, Category, Desc) 按字串排序
+            return val 
 
         # 4. 執行排序
         data.sort(key=natural_key, reverse=reverse)
@@ -569,7 +582,7 @@ class ExpenseTrackerApp:
         # 6. 更新排序狀態和欄位標題箭頭
         self._sort_state[col] = not reverse # 切換下次的排序方向
         
-        # 可選：更新欄位標題以顯示排序箭頭 (▲ 升序, ▼ 降序)
+        # 更新欄位標題以顯示排序箭頭 (▲ 升序, ▼ 降序)
         self._update_heading_arrows(col, reverse)
 
     def update_transaction_list(self, display_list: List[Dict[str, Any]]):
@@ -594,6 +607,7 @@ class ExpenseTrackerApp:
             
             # 使用 index 作為 iid，這與 delete_transaction 中的邏輯一致
             self.tree.insert("", tk.END, iid=index, values=(
+                record['date'],
                 record['type'], 
                 amount_display, 
                 record['category'], 
