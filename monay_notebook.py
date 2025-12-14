@@ -97,6 +97,8 @@ class LoginWindow:
         self.login_window.bind('<Return>', lambda event: self.attempt_login())
         self.username_entry.focus_set()
 
+    
+
     def attempt_login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
@@ -187,13 +189,13 @@ class ExpenseTrackerApp:
         master.title("💰 金錢追蹤器")
         master.geometry("1100x650")
         master.configure(bg='#00E3E3')
-
+        self._sort_state = {}
         master.protocol("WM_DELETE_WINDOW", self.on_closing)
-
+        
         self.balance = 0.0
         self.transactions: List[Dict[str, Any]] = []
         self.categories = ["飲食", "交通", "娛樂", "購物", "薪資", "投資", "其他"]
-
+        
         self.load_transactions()
 
         # 儲存目前顯示在表格中的交易列表 (用於圖表連動)
@@ -390,6 +392,23 @@ class ExpenseTrackerApp:
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
         self.recalculate_balance()
+        self._setup_column_sorting()
+
+    def _setup_column_sorting(self):
+        """將排序函數綁定到 Treeview 的所有欄位標題上。"""
+        # 您在 Treeview 中定義的所有欄位名稱
+        all_columns = ("Type", "Amount", "Category", "Desc", "Balance") 
+        
+        for col in all_columns:
+            # 獲取該欄位標題的現有文字
+            # 由於 Treeview 的 heading() 方法在創建時被調用過，我們需要重新設定 command
+            # 在您的代碼中，Treeview 欄位定義如下：
+            # self.tree.heading("Type", text="類型")
+            # ...
+            
+            # 使用 lambda 函數將當前欄位名稱 (col) 傳遞給 sort_column
+            self.tree.heading(col, command=lambda c=col: self.sort_column(c))
+        
 
     # --------------------------------------------------------------------
     # --- 核心數據與篩選方法 (與原代碼相同) ---
@@ -494,8 +513,68 @@ class ExpenseTrackerApp:
         else:
             self.balance_label.config(fg="red")
 
+    def _update_heading_arrows(self, current_col, is_descending):
+        """更新所有欄位標題，只在當前排序欄位上顯示箭頭。"""
+        # 您的中文標題映射 (根據您的 _setup_ui 進行調整)
+        heading_map = {
+            "Type": "類型", "Amount": "金額", "Category": "類別", 
+            "Desc": "備註", "Balance": "餘額"
+        }
+        
+        arrow = " ▼" if is_descending else " ▲" # True: 降序 (大到小), False: 升序 (小到大)
+        
+        for col, text in heading_map.items():
+            new_text = text
+            if col == current_col:
+                new_text += arrow
+            
+            # 使用 self.tree.heading() 的第一個參數 (欄位名稱) 來設定標題文字
+            self.tree.heading(col, text=new_text, command=lambda c=col: self.sort_column(c))
+
+    def sort_column(self, col):
+        """
+        根據指定的欄位對 Treeview 中的數據進行排序。
+        col: 要排序的欄位名稱 (e.g., "Amount")
+        """
+        
+        # 1. 確定排序方向 (升序/降序)
+        # 預設為 False (升序)。如果之前排序過，則取反。
+        reverse = self._sort_state.get(col, False) 
+        
+        # 2. 獲取所有行的數據和 Item ID
+        # (value, item_id)
+        data = [(self.tree.set(child, col), child) for child in self.tree.get_children('')]
+        
+        # 3. 定義 Key 函數以進行正確的排序
+        is_numeric = col in ("Amount", "Balance")
+        
+        def natural_key(item):
+            # item[0] 是欄位值
+            val = item[0]
+            if is_numeric:
+                try:
+                    return float(val) # 金額和餘額按數字排序
+                except ValueError:
+                    return 0.0 # 處理無效數字
+            return val # 其他欄位按字串排序 (Type, Category, Desc)
+
+        # 4. 執行排序
+        data.sort(key=natural_key, reverse=reverse)
+
+        # 5. 重新排列 Treeview 中的行
+        for index, (val, item) in enumerate(data):
+            # 將 item 移到 root ('') 下的 index 位置
+            self.tree.move(item, '', index)
+
+        # 6. 更新排序狀態和欄位標題箭頭
+        self._sort_state[col] = not reverse # 切換下次的排序方向
+        
+        # 可選：更新欄位標題以顯示排序箭頭 (▲ 升序, ▼ 降序)
+        self._update_heading_arrows(col, reverse)
+
     def update_transaction_list(self, display_list: List[Dict[str, Any]]):
         """清空表格並重新載入、排序指定的交易紀錄"""
+        current_ids = self.tree.get_children()
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -508,11 +587,19 @@ class ExpenseTrackerApp:
         # 這裡需要根據 display_list 找到它們在 self.transactions 中的原始索引
         indexed_records = []
         # 由於 display_list 是 self.transactions 的子集，我們需要找出索引
-        for i, record in enumerate(self.transactions):
-            # 注意: 這裡的比較是 O(N^2) 效率較低，但對於小到中型的數據集可以接受。
-            # 更高效的方法是在篩選時保留原始索引。
-            if record in display_list:
-                 indexed_records.append((i, record))
+        for index, record in enumerate(self.transactions): # 按照 transactions 列表的順序載入
+            amount_display = f"{record['amount']:.2f}"
+            balance_display = f"{record['new_balance']:.2f}"
+            tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
+            
+            # 使用 index 作為 iid，這與 delete_transaction 中的邏輯一致
+            self.tree.insert("", tk.END, iid=index, values=(
+                record['type'], 
+                amount_display, 
+                record['category'], 
+                record['description'], 
+                balance_display
+            ), tags=(tag,))
 
         # 根據日期和原始索引排序（最新的在最上面）
         sorted_records = sorted(
