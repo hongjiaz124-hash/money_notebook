@@ -61,15 +61,15 @@ class LoginWindow:
 
         # 設定風格
         style = ttk.Style()
-        style.configure('TLabel', font=('Microsoft YaHei', 10), background='#F0F8FF')
+        style.configure('TLabel', font=('Microsoft YaHei', 10), background="#FFFFFF")
         style.configure('TEntry', font=('Microsoft YaHei', 10))
 
         style.configure('Login.TButton',
                         font=('Microsoft YaHei', 10, 'bold'),
                         padding=5,
-                        foreground='white',
-                        background='#000093')
-        style.map('Login.TButton', background=[('active', '#0080FF')])
+                        foreground="#3B7FD7",
+                        background="#3A2EDD")
+        style.map('Login.TButton', background=[('active', "#0080FF")])
 
         # 登入框架
         login_frame = tk.Frame(self.login_window, bg='#F0F8FF', padx=20, pady=10)
@@ -86,13 +86,13 @@ class LoginWindow:
         self.password_entry.grid(row=1, column=1, padx=5, pady=5)
 
         # 按鈕框架 (登入/註冊)
-        button_frame = tk.Frame(login_frame, bg='#F0F8FF')
+        button_frame = tk.Frame(login_frame, bg="#FFFFFF")
         button_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky='we')
 
-        ttk.Button(button_frame, text="🔑 登入", command=self.attempt_login, style='Login.TButton').pack(side=tk.LEFT, expand=True, fill='x', padx=(0, 5))
+        ttk.Button(button_frame,  text="🔑 登入", command=self.attempt_login, style='Login.TButton').pack(side=tk.LEFT, expand=True, fill='x', padx=(0, 5))
 
         # 新增註冊按鈕
-        ttk.Button(button_frame, text="📝 註冊", command=self.show_registration_window, style='Login.TButton').pack(side=tk.RIGHT, expand=True, fill='x', padx=(5, 0))
+        ttk.Button(button_frame,  text="📝 註冊", command=self.show_registration_window, style='Login.TButton').pack(side=tk.RIGHT, expand=True, fill='x', padx=(5, 0))
 
         self.login_window.bind('<Return>', lambda event: self.attempt_login())
         self.username_entry.focus_set()
@@ -119,7 +119,7 @@ class LoginWindow:
         reg_window = tk.Toplevel(self.login_window)
         reg_window.title("📝 註冊新帳號")
         reg_window.geometry("350x250")
-        reg_window.configure(bg='#F0F8FF')
+        reg_window.configure(bg="#FFFFFF")
         reg_window.resizable(False, False)
 
         reg_window.transient(self.login_window)
@@ -203,13 +203,13 @@ class ExpenseTrackerApp:
 
         # --- 設定風格與配色 ---
         style = ttk.Style()
-        PRIMARY_COLOR = '#000093'
+        PRIMARY_COLOR = '#000099'
 
-        style.configure('TButton', foreground='white', background=PRIMARY_COLOR, font=('Microsoft YaHei', 12, 'bold'), padding=8, borderwidth=0)
+        style.configure('TButton', foreground='#5292D1', background=PRIMARY_COLOR, font=('Microsoft YaHei', 12, 'bold'), padding=8, borderwidth=0)
         style.map('TButton', background=[('active', '#0080FF')])
-        style.configure('Delete.TButton', foreground='white', background='#FF3333', font=('Microsoft YaHei', 12, 'bold'), padding=8, borderwidth=0)
+        style.configure('Delete.TButton', foreground='red', background='#FF3333', font=('Microsoft YaHei', 12, 'bold'), padding=8, borderwidth=0)
         style.map('Delete.TButton', background=[('active', '#FF6666')])
-        style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background='#0080FF', foreground='white')
+        style.configure("Treeview.Heading", font=('Microsoft YaHei', 11, 'bold'), background='#0080FF', foreground="#5FC6EC")
         style.configure("Treeview", rowheight=28)
 
         # --- 介面佈局：主框架分為左右兩欄 ---
@@ -220,7 +220,7 @@ class ExpenseTrackerApp:
         # 區塊 A: 左側 - 餘額和新增交易 (Input/Control)
         # ----------------------------------------------------
         self.left_frame = tk.Frame(self.main_paned_window, bg='#F0F8FF', padx=10, pady=10)
-        self.main_paned_window.add(self.left_frame, weight=30)
+        self.main_paned_window.add(self.left_frame, weight=50)
 
         # 1. 餘額顯示區域
         self.balance_frame = tk.Frame(self.left_frame, bg='white', padx=10, pady=5, relief=tk.RAISED, borderwidth=1)
@@ -263,6 +263,8 @@ class ExpenseTrackerApp:
         tk.Label(self.input_group, text="備註:", bg='#F0F8FF').grid(row=4, column=0, padx=5, pady=8, sticky='w')
         self.description_entry = ttk.Entry(self.input_group, width=20)
         self.description_entry.grid(row=4, column=1, padx=5, pady=8, sticky='we')
+        
+        ttk.Button(self.input_group, text="💾 儲存並新增記錄", command=self.add_transaction, style='TButton').grid(row=5, column=1, padx=5, pady=8, sticky='we')
 
         self.input_group.grid_columnconfigure(1, weight=1)
 
@@ -303,11 +305,9 @@ class ExpenseTrackerApp:
         self.search_group.grid_columnconfigure(1, weight=1)
         self.search_group.grid_rowconfigure(1, weight=1)
 
-        # 4. 功能按鈕區域
-        self.button_frame = tk.Frame(self.left_frame, bg='#F0F8FF')
-        self.button_frame.pack(pady=15, fill='x')
+        
 
-        ttk.Button(self.button_frame, text="💾 儲存並新增記錄", command=self.add_transaction, style='TButton').pack(fill='x', padx=10)
+        
 
         # ----------------------------------------------------
         # 區塊 B: 右側 - 交易記錄表格 & 分析圖表 (使用 Notebook)
@@ -586,55 +586,38 @@ class ExpenseTrackerApp:
         self._update_heading_arrows(col, reverse)
 
     def update_transaction_list(self, display_list: List[Dict[str, Any]]):
-        """清空表格並重新載入、排序指定的交易紀錄"""
-        current_ids = self.tree.get_children()
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        """清空表格並重新載入指定的交易紀錄（保持 iid 與 self.transactions 對應）"""
 
+        self.tree.delete(*self.tree.get_children())
         self.current_filtered_transactions = display_list
 
         if not display_list:
-            self.tree.insert("", tk.END, values=("--", "無", "記錄", "可", "顯示", "--"), tags=())
+            self.tree.insert("", tk.END, values=("--", "無", "記錄", "可", "顯示", "--"))
             return
 
-        # 這裡需要根據 display_list 找到它們在 self.transactions 中的原始索引
-        indexed_records = []
-        # 由於 display_list 是 self.transactions 的子集，我們需要找出索引
-        for index, record in enumerate(self.transactions): # 按照 transactions 列表的順序載入
-            amount_display = f"{record['amount']:.2f}"
-            balance_display = f"{record['new_balance']:.2f}"
-            tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
-            
-            # 使用 index 作為 iid，這與 delete_transaction 中的邏輯一致
-            self.tree.insert("", tk.END, iid=index, values=(
-                record['date'],
-                record['type'], 
-                amount_display, 
-                record['category'], 
-                record['description'], 
-                balance_display
-            ), tags=(tag,))
-
-        # 根據日期和原始索引排序（最新的在最上面）
+        # 依日期（新到舊）排序顯示，但 iid 必須是原始索引
         sorted_records = sorted(
-            indexed_records,
-            key=lambda item: (dt.datetime.strptime(item[1]['date'], self.DATE_FORMAT), item[0]),
-            reverse=True
+        ((i, r) for i, r in enumerate(self.transactions) if r in display_list),
+        key=lambda x: dt.datetime.strptime(x[1]['date'], self.DATE_FORMAT),
+        reverse=True
         )
 
-        for original_index, record in sorted_records:
-            amount_display = f"{record['amount']:,.2f}"
-            balance_display = f"{record['new_balance']:,.2f}"
+        for index, record in sorted_records:
             tag = 'income_tag' if record['type'] == '收入' else 'expense_tag'
-
-            self.tree.insert("", tk.END, iid=original_index, values=(
-                record['date'],
-                record['type'],
-                amount_display,
-                record['category'],
-                record['description'],
-                balance_display
-            ), tags=(tag,))
+            self.tree.insert(
+                "",
+                tk.END,
+                iid=index,
+                values=(
+                    record['date'],
+                    record['type'],
+                    f"{record['amount']:,.2f}",
+                    record['category'],
+                    record['description'],
+                    f"{record['new_balance']:,.2f}"
+                ),
+                tags=(tag,)
+            )
 
     def recalculate_balance(self):
         """重新計算總餘額，並更新顯示所有交易記錄"""
